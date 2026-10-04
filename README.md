@@ -15,6 +15,8 @@ Die Dateien in diesem Ordner müssen einmal unter einer https-Adresse erreichbar
 
 ## 3. Songtexte hochladen
 - Immer nur über die App vom Home-Bildschirm hochladen, nicht im Safari-Tab.
+- **Ganze Ordner mit Unterordnern:** iPadOS erlaubt Web-Apps keine Ordnerauswahl. Deshalb als ZIP: In der Dateien-App den Ordner gedrückt halten > **Komprimieren**. Dann in der App auf **"Ordner (ZIP)"** tippen und die ZIP-Datei wählen. Alle Ordner und Unterordner bleiben erhalten. Auch einzelne ZIP-Dateien über "Dateien" funktionieren.
+- Eine ZIP-Datei wird beim Entpacken ganz in den Arbeitsspeicher geladen. Packe große Sammlungen deshalb in mehrere ZIP-Dateien von je höchstens 200 bis 300 MB.
 - Lade in Portionen hoch (zum Beispiel 100 bis 200 MB pro Durchgang), nicht 1 GB auf einmal. Unten in der Ordnerliste steht, wie viel Speicher belegt ist.
 - Nach dem Hochladen indexiert die App die Inhalte im Hintergrund, damit die Volltextsuche funktioniert (Statuszeile unter dem Suchfeld). Das darf einige Minuten dauern. Bleibe so lange in der App.
 - Teste zuerst mit einem kleinen Teil, bevor du alles hochlädst.
@@ -22,4 +24,4 @@ Die Dateien in diesem Ordner müssen einmal unter einer https-Adresse erreichbar
 ## Wichtig
 - Die Daten liegen nur auf diesem Gerät. iPad und iPhone haben getrennte Ablagen. Sichere wichtige Dateien zusätzlich (Original behalten oder "Herunterladen").
 - iOS entscheidet über den Speicherplatz für Web-Apps. Für Apps vom Home-Bildschirm ist er großzügig, eine feste Zusage gibt es aber nicht. Beim Löschen der App gehen die Daten verloren.
-- Updates: Neue Dateien auf den Webspace laden und in sw.js die Zahl bei `dateiablage-v1` erhöhen (v2, v3 ...). Die App aktualisiert sich dann beim nächsten Start mit Internet.
+- Updates: Geänderte Dateien (index.html und sw.js) bei GitHub hochladen, vorhandene werden ersetzt. In sw.js muss die Versionszahl höher sein als vorher (jetzt `dateiablage-v2`, beim nächsten Mal v3). Danach die App auf dem iPad mit Internet zweimal komplett beenden und neu öffnen.

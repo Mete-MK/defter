@@ -87,8 +87,8 @@ mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
   <div id="logoL"></div>
   <div class="bar">
     <button id="bF">＋ Ordner</button>
-    <label class="btn">⬆ Dateien<input id="up" type="file" accept=".docx,.pdf,.txt" multiple hidden></label>
-    <button id="bO">⬆ Ordner</button><input id="upd" type="file" webkitdirectory multiple hidden>
+    <label class="btn">⬆ Dateien<input id="up" type="file" accept=".docx,.pdf,.txt,.zip" multiple hidden></label>
+    <button id="bO">⬆ Ordner</button><input id="upd" type="file" webkitdirectory multiple hidden><input id="upz" type="file" accept=".zip,application/zip" multiple hidden>
     <button id="bN">📝 Neues Dokument</button>
     <button id="bL">🖼 Logo</button>
   </div>
@@ -115,8 +115,10 @@ mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
   <b>Mehrere Ordner hochladen</b>
   <div id="qt" style="font-size:13px;color:var(--mut)"></div>
   <div id="ql"></div>
+  <div style="font-size:12px;color:var(--mut)">Auf iPad, iPhone und Android: Ordner in der Dateien-App gedrückt halten, „Komprimieren“ wählen und hier die ZIP-Datei auswählen. Ordner und Unterordner bleiben erhalten.</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
-    <button id="qa">＋ Weiteren Ordner wählen</button>
+    <button id="qz" class="pri">📦 ZIP-Datei wählen</button>
+    <button id="qa">＋ Ordner wählen</button>
     <button id="qc">Leeren</button>
   </div>
   <div style="display:flex;gap:6px;justify-content:flex-end">
@@ -352,6 +354,30 @@ document.addEventListener('keydown',e=>{
   }
 });
 
+const MOBILE=!!window.Capacitor||/Android|iPhone|iPad/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const getBl=it=>it.get?it.get():it.f;
+async function zipItems(file){
+  const z=await JSZip.loadAsync(file),out=[];
+  z.forEach((path,en)=>{
+    if(en.dir)return;
+    const parts=path.split(/[\\/]/).filter(Boolean),name=parts.pop();
+    if(!name||name.startsWith('.')||parts.some(q=>q==='__MACOSX'||q.startsWith('.')))return;
+    if(!['docx','pdf','txt'].includes(name.split('.').pop().toLowerCase()))return;
+    out.push({f:{name,type:''},dirs:parts,get:()=>en.async('blob')});
+  });
+  return out;
+}
+async function expand(files){
+  const items=[];
+  for(const f of files){
+    if(/\.zip$/i.test(f.name)){
+      try{setStatus('ZIP wird gelesen: '+f.name+' …');items.push(...await zipItems(f))}
+      catch(e){toast('ZIP konnte nicht gelesen werden: '+f.name)}
+      setStatus('');
+    }else items.push({f,dirs:[]});
+  }
+  return items;
+}
 async function ingest(items,base){
   const ok=items.filter(it=>['docx','pdf','txt'].includes((it.f.name.split('.').pop()||'').toLowerCase()));
   const skipped=items.length-ok.length;
@@ -366,14 +392,15 @@ async function ingest(items,base){
   for(const it of ok){
     if(++k%5===1)setStatus('Hochladen … '+k+' von '+ok.length);
     const p=resolve(it.dirs,true),ex=exist(p,it.f.name),ext=it.f.name.split('.').pop().toLowerCase();
-    if(ex){if(!over)continue;ex.blob=it.f;ex.mime=it.f.type;delete ex.html;unindex(ex.id);await put(ex);replaced++;if(openFileId===ex.id)openFile(ex)}
-    else{const n={id:uid(),parent:p,type:'file',name:it.f.name,ext:ext.toLowerCase(),blob:it.f,mime:it.f.type};nodes.push(n);await put(n);added++}
+    if(ex){if(!over)continue;ex.blob=await getBl(it);ex.mime=it.f.type;delete ex.html;unindex(ex.id);await put(ex);replaced++;if(openFileId===ex.id)openFile(ex)}
+    else{const n={id:uid(),parent:p,type:'file',name:it.f.name,ext:ext.toLowerCase(),blob:await getBl(it),mime:it.f.type};nodes.push(n);await put(n);added++}
   }
   open.add(base);setStatus('');render();usage();indexMissing();
   const m=[];if(added)m.push(added+' neu');if(replaced)m.push(replaced+' überschrieben');if(skipped)m.push(skipped+' nicht unterstützt');
   toast(m.length?m.join(', '):'Nichts hochgeladen');
 }
-$('#up').onchange=async e=>{const l=[...e.target.files].map(f=>({f,dirs:[]}));e.target.value='';await ingest(l,targetFolder())};
+$('#up').onchange=async e=>{const fl=[...e.target.files];e.target.value='';const l=await expand(fl);await ingest(l,targetFolder())};
+$('#upz').onchange=async e=>{const fl=[...e.target.files];e.target.value='';qAdd(await expand(fl))};
 /* Mehrere Ordner sammeln, dann gemeinsam hochladen */
 let queue=[],qBase='root';
 function qRender(){
@@ -389,7 +416,9 @@ function qAdd(list){
   list.forEach(it=>{const k=it.dirs.join('/')+'/'+it.f.name;if(!seen.has(k)){seen.add(k);queue.push(it)}});
   $('#qp').style.display='flex';qRender();
 }
-$('#bO').onclick=()=>{queue=[];qBase=targetFolder();$('#qp').style.display='flex';qRender();$('#upd').click()};
+$('#bO').onclick=()=>{queue=[];qBase=targetFolder();$('#qp').style.display='flex';qRender();if(!MOBILE)$('#upd').click()};
+$('#qz').onclick=()=>$('#upz').click();
+if(MOBILE){$('#qa').style.display='none';$('#bO').textContent='⬆ Ordner (ZIP)'}
 $('#qa').onclick=()=>$('#upd').click();
 $('#qc').onclick=()=>{queue=[];qRender()};
 $('#qx').onclick=()=>{queue=[];$('#qp').style.display='none'};
@@ -411,7 +440,7 @@ tr.addEventListener('drop',async e=>{
   const ents=[...(e.dataTransfer.items||[])].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
   const out=[];
   if(ents.length){for(const en of ents)await walkEntry(en,[],out)}
-  else[...e.dataTransfer.files].forEach(f=>out.push({f,dirs:[]}));
+  else out.push(...await expand([...e.dataTransfer.files]));
   if(!out.length)return;
   if(!queue.length)qBase=targetFolder();
   qAdd(out);
