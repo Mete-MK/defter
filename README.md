@@ -1,10 +1,10 @@
-# Dateiablage als Web-App für iPad und iPhone (offline)
+# Defter als Web-App für iPad und iPhone (offline)
 
 Die App läuft komplett im Gerät. Nach der einmaligen Einrichtung braucht sie kein Internet mehr.
 
 ## 1. Ordner ins Internet stellen (einmalig, nur zum Installieren)
 Die Dateien in diesem Ordner müssen einmal unter einer https-Adresse erreichbar sein. Zwei einfache Wege:
-- **Netlify:** auf app.netlify.com/drop den ganzen Ordner "dateiablage-pwa" ins Browserfenster ziehen. Du bekommst einen Link. Mit einem kostenlosen Konto bleibt die Seite dauerhaft bestehen (ohne Konto wird sie nach kurzer Zeit gelöscht).
+- **Netlify:** auf app.netlify.com/drop den ganzen Ordner "defter-pwa" ins Browserfenster ziehen. Du bekommst einen Link. Mit einem kostenlosen Konto bleibt die Seite dauerhaft bestehen (ohne Konto wird sie nach kurzer Zeit gelöscht).
 - **GitHub Pages:** Dateien in ein neues GitHub-Repository hochladen, unter Settings > Pages aktivieren.
 
 ## 2. Auf dem iPad/iPhone installieren
@@ -24,4 +24,7 @@ Die Dateien in diesem Ordner müssen einmal unter einer https-Adresse erreichbar
 ## Wichtig
 - Die Daten liegen nur auf diesem Gerät. iPad und iPhone haben getrennte Ablagen. Sichere wichtige Dateien zusätzlich (Original behalten oder "Herunterladen").
 - iOS entscheidet über den Speicherplatz für Web-Apps. Für Apps vom Home-Bildschirm ist er großzügig, eine feste Zusage gibt es aber nicht. Beim Löschen der App gehen die Daten verloren.
-- Updates: Geänderte Dateien (index.html und sw.js) bei GitHub hochladen, vorhandene werden ersetzt. In sw.js muss die Versionszahl höher sein als vorher (jetzt `dateiablage-v2`, beim nächsten Mal v3). Danach die App auf dem iPad mit Internet zweimal komplett beenden und neu öffnen.
+- Updates: Geänderte Dateien (index.html und sw.js) bei GitHub hochladen, vorhandene werden ersetzt. In sw.js muss die Versionszahl höher sein als vorher (jetzt `defter-v4`, beim nächsten Mal v5). Danach die App auf dem iPad mit Internet zweimal komplett beenden und neu öffnen.
+
+## Neuer App-Name
+Der Name auf dem Home-Bildschirm wird beim Hinzufügen festgelegt. Lösche das alte Symbol (gedrückt halten > App entfernen > **Vom Home-Bildschirm entfernen**) und füge die App danach neu hinzu. Die gespeicherten Dateien bleiben dabei erhalten, solange du die Web-App-Daten nicht löschst.

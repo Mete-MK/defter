@@ -1,6 +1,6 @@
 {
-  "name": "Dateiablage",
-  "short_name": "Dateiablage",
+  "name": "Defter",
+  "short_name": "Defter",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
