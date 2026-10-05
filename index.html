@@ -34,7 +34,7 @@ button.pri{background:var(--ac);border-color:var(--ac);color:#fff}
 #path{font-size:12px;color:var(--mut);padding:6px 10px;border-top:1px solid var(--bd)}
 #head{position:relative;padding:10px 14px 10px 64px;border-bottom:1px solid var(--bd);font-weight:600;background:var(--pane);display:flex;align-items:center;gap:8px}
 #vs{flex:1;overflow:auto;padding:18px;background:var(--bg);touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
-#view{transform-origin:0 0;transform:scale(var(--zz,1));width:100%}
+#view{transform-origin:0 0;width:100%}
 .paper{background:var(--pane);max-width:820px;margin:0 auto;padding:28px 34px;border:1px solid var(--bd);border-radius:6px;min-height:200px;overflow-wrap:anywhere}
 .paper img{max-width:100%}
 .paper table{border-collapse:collapse}.paper td,.paper th{border:1px solid var(--bd);padding:4px 8px}
@@ -952,17 +952,31 @@ try{if(localStorage.getItem('tools')==='1')$('#tools').classList.add('on')}catch
   sp.addEventListener('dblclick',()=>{L.style.width='380px';try{localStorage.removeItem('lw')}catch(e){}});
 })();
 
-/* ---------- Zoom rechts: nur skalieren wie bei PDF, kein Umbruch ---------- */
+/* ---------- Zoom rechts: nur skalieren wie bei PDF (kein Umbruch), Fingermitte bleibt stehen ---------- */
 (()=>{
-  const v=$('#vs'),zt=$('#view');let z=1,d0=0,z0=1;
+  const v=$('#vs'),zt=$('#view'),P=18;let z=1,g=null;
   const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
-  const apply=()=>{zt.style.setProperty('--zz',z);$('#zr').style.display=Math.abs(z-1)>.02?'block':'none'};
-  const zoomAt=(nz,cx,cy)=>{nz=Math.min(4,Math.max(.5,nz));const px=(v.scrollLeft+cx)/z,py=(v.scrollTop+cy)/z;z=nz;apply();v.scrollLeft=px*z-cx;v.scrollTop=py*z-cy};
-  v.addEventListener('touchstart',e=>{if(e.touches.length===2){d0=dist(e.touches);z0=z}},{passive:true});
-  v.addEventListener('touchmove',e=>{if(e.touches.length===2&&d0){e.preventDefault();const r=v.getBoundingClientRect(),t=e.touches;zoomAt(z0*dist(t)/d0,(t[0].clientX+t[1].clientX)/2-r.left,(t[0].clientY+t[1].clientY)/2-r.top)}},{passive:false});
-  v.addEventListener('touchend',e=>{if(e.touches.length<2)d0=0});
-  v.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();const r=v.getBoundingClientRect();zoomAt(z*(e.deltaY<0?1.1:.9),e.clientX-r.left,e.clientY-r.top)}},{passive:false});
-  $('#zr').onclick=()=>{z=1;apply();v.scrollLeft=0};
+  const mid=t=>{const r=v.getBoundingClientRect();return[(t[0].clientX+t[1].clientX)/2-r.left,(t[0].clientY+t[1].clientY)/2-r.top]};
+  const show=()=>{$('#zr').style.display=Math.abs(z-1)>.02?'block':'none'};
+  const clamp=x=>Math.min(5,Math.max(.5,x));
+  function commit(nz,mx,my,fx,fy){z=nz;zt.style.transform=Math.abs(z-1)<.001?'':'scale('+z+')';show();v.scrollLeft=P+fx*z-mx;v.scrollTop=P+fy*z-my}
+  v.addEventListener('touchstart',e=>{
+    if(e.touches.length===2){const[mx,my]=mid(e.touches);g={d0:dist(e.touches),z0:z,fx:(v.scrollLeft+mx-P)/z,fy:(v.scrollTop+my-P)/z,sl:v.scrollLeft,st:v.scrollTop,nz:z,mx,my}}
+  },{passive:true});
+  v.addEventListener('touchmove',e=>{
+    if(!g||e.touches.length!==2)return;
+    e.preventDefault();
+    const[mx,my]=mid(e.touches);g.nz=clamp(g.z0*dist(e.touches)/g.d0);g.mx=mx;g.my=my;
+    zt.style.transform='translate('+(g.sl+mx-P-g.fx*g.nz)+'px,'+(g.st+my-P-g.fy*g.nz)+'px) scale('+g.nz+')';
+  },{passive:false});
+  const end=e=>{if(g&&e.touches.length<2){const k=g;g=null;commit(k.nz,k.mx,k.my,k.fx,k.fy)}};
+  v.addEventListener('touchend',end);v.addEventListener('touchcancel',end);
+  v.addEventListener('wheel',e=>{
+    if(!e.ctrlKey)return;e.preventDefault();
+    const r=v.getBoundingClientRect(),cx=e.clientX-r.left,cy=e.clientY-r.top;
+    commit(clamp(z*(e.deltaY<0?1.1:.9)),cx,cy,(v.scrollLeft+cx-P)/z,(v.scrollTop+cy-P)/z);
+  },{passive:false});
+  $('#zr').onclick=()=>{z=1;zt.style.transform='';show();v.scrollLeft=0};
 })();
 
 /* ---------- Linken Bereich komplett ein-/ausblenden ---------- */
