@@ -83,11 +83,14 @@ mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
 #tools{display:none;border-bottom:1px solid var(--bd)}#tools.on{display:block}#tools .bar:last-child{border-bottom:0}
 #va{position:absolute;right:16px;bottom:16px;display:flex;gap:10px;z-index:5}
 #va button{width:48px;height:48px;border-radius:50%;font-size:20px;padding:0;box-shadow:0 2px 10px rgba(0,0,0,.35)}
-#view{touch-action:pan-x pan-y;--zz:1}
-#view>.paper,#view>.word-document{zoom:var(--zz);width:100%;margin-inline:auto}
-#view>.paper{padding:calc(28px / var(--zz)) calc(34px / var(--zz))}
+#view{touch-action:pan-x pan-y;--zz:1;scrollbar-gutter:stable;overscroll-behavior:contain}
+#view>.paper{zoom:var(--zz);width:100%;margin-inline:auto;padding:calc(28px / var(--zz)) calc(34px / var(--zz))}
+.zs{position:relative;margin:0 auto;overflow:hidden}
+.zc{position:absolute;left:0;top:0;transform-origin:0 0}
+.zc>.paper{width:100%}
+.zc canvas{width:100%;max-width:900px}
 #view .docx-wrapper{width:100%;min-width:0;overflow-wrap:anywhere}
-#view .docx-wrapper>section.docx{width:100%!important;min-width:0!important;max-width:100%;height:auto!important;min-height:0!important;padding:calc(24px / var(--zz))!important}
+#view .docx-wrapper>section.docx{width:100%!important;min-width:0!important;max-width:100%;height:auto!important;min-height:0!important;padding:24px!important}
 #view .docx-wrapper article{min-width:0;overflow-wrap:anywhere}
 #view .docx-wrapper img,#view .docx-wrapper svg{max-width:100%;height:auto}
 #view .docx-wrapper table{width:100%!important;max-width:100%;table-layout:fixed}
@@ -96,7 +99,7 @@ mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
 #head.hc{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
 #panelToggle{flex:none;width:44px;height:44px;padding:0;font-size:22px;touch-action:manipulation}
 body.sidebar-hidden #left,body.sidebar-hidden #split{display:none}
-@media(max-width:600px){#view{padding:10px}#view>.paper{padding:calc(18px / var(--zz)) calc(12px / var(--zz))}#tb input[type=text]{min-width:0;max-width:100%}#eb{flex-wrap:wrap}#head.hc{display:flex}}
+@media(max-width:600px){#view{padding:10px}#view>.paper{padding:calc(18px / var(--zz)) calc(12px / var(--zz))}.zc>.paper{padding:18px 12px}#tb input[type=text]{min-width:0;max-width:100%}#eb{flex-wrap:wrap}#head.hc{display:flex}}
 
 #mp{display:none;flex-direction:column;gap:4px;padding:6px 8px;border-top:1px solid var(--bd);background:var(--pane)}
 #mpt{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -538,28 +541,28 @@ async function openFile(n){
   const my=n.id;
   try{
     const blob=await blobOf(n.id);if(!blob)throw 0;
-    if(n.ext==='txt'){const t=await blob.text();if(openFileId!==my)return;v.innerHTML='<div class="paper"><pre></pre></div>';v.querySelector('pre').textContent=t}
+    if(n.ext==='txt'){const t=await blob.text();if(openFileId!==my)return;zStage(v).innerHTML='<div class="paper"><pre></pre></div>';v.querySelector('pre').textContent=t}
     else if(n.ext==='docx'){
       let done=false;
       if(window.docx){try{
         const box=document.createElement('div');box.className='word-document';
         await docx.renderAsync(blob,box,null,{className:'docx',inWrapper:true,breakPages:true,ignoreWidth:true,ignoreHeight:true,ignoreLastRenderedPageBreak:true});
-        if(openFileId!==my)return;v.innerHTML='';v.appendChild(box);
+        if(openFileId!==my)return;zStage(v).appendChild(box);
         done=true}catch(e){}}
-      if(!done){const r=await mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});if(openFileId!==my)return;v.innerHTML='<div class="paper">'+r.value+'</div>'}
+      if(!done){const r=await mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});if(openFileId!==my)return;zStage(v).innerHTML='<div class="paper">'+r.value+'</div>'}
     }
     else if(AUDIO.includes(n.ext)){
-      v.innerHTML='<div class="paper" style="text-align:center"><div style="font-size:54px">🎵</div><div class="mt" style="font-weight:600;margin:8px 0"></div><div style="color:var(--mut)">Läuft im Player links unten. Du kannst weiter durch Ordner und Texte blättern – die Musik läuft weiter.</div></div>';
+      zStage(v).innerHTML='<div class="paper" style="text-align:center"><div style="font-size:54px">🎵</div><div class="mt" style="font-weight:600;margin:8px 0"></div><div style="color:var(--mut)">Läuft im Player links unten. Du kannst weiter durch Ordner und Texte blättern – die Musik läuft weiter.</div></div>';
       v.querySelector('.mt').textContent=n.name;playNode(n);
     }
     else if(n.ext==='pdf'){
       await pdfWorker();
       const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
-      if(openFileId!==my)return;v.innerHTML='';const w=Math.max(1,Math.min(v.clientWidth-36,900));
+      if(openFileId!==my)return;const zc=zStage(v);
       for(let i=1;i<=pdf.numPages;i++){
         const pg=await pdf.getPage(i);if(openFileId!==my)return;
-        const base=pg.getViewport({scale:1}),sc=Math.max(w,900)/base.width,vp=pg.getViewport({scale:sc*(window.devicePixelRatio||1)});
-        const cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;cv.dataset.baseWidth=900;cv.style.width=w+'px';v.appendChild(cv);
+        const base=pg.getViewport({scale:1}),sc=900/base.width,vp=pg.getViewport({scale:sc*(window.devicePixelRatio||1)});
+        const cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;zc.appendChild(cv);
         await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
       }
     }
@@ -976,22 +979,42 @@ $('#panelToggle').onclick=()=>{
   sp.addEventListener('dblclick',()=>{L.style.width='380px';try{localStorage.removeItem('lw')}catch(e){}});
 })();
 
-/* ---------- Zoom rechts: zwei Finger (Strg+Mausrad am PC) ---------- */
+/* ---------- Zoom rechts: zwei Finger (Strg+Mausrad am PC) ----------
+   Der Inhalt wird einmal in fester Breite gesetzt und dann nur noch
+   proportional skaliert (wie ein PDF) – Zeilen springen nie um.
+   Vergrößert wird immer vom linken Rand aus, links geht nichts verloren. */
+function zStage(v){v.innerHTML='<div class="zs"><div class="zc"></div></div>';const c=v.querySelector('.zc');window.__zLayout&&window.__zLayout(true);return c}
 (()=>{
-  const v=$('#view');let z=1,d0=0,z0=1;
-  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
-  const fitPages=()=>{
-    const cs=getComputedStyle(v),avail=Math.max(1,v.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight));
-    v.querySelectorAll('canvas').forEach(cv=>{cv.style.width=Math.min(avail,Number(cv.dataset.baseWidth||cv.width)*z)+'px';cv.style.height='auto'});
-    v.scrollLeft=0;
+  const v=$('#view');let z=1,d0=0,z0=1,st0=0,sl0=0,y0=0;
+  const MIN=.5,MAX=4,cl=x=>Math.min(MAX,Math.max(MIN,x));
+  const avail=()=>{const cs=getComputedStyle(v);return Math.max(1,Math.floor(v.clientWidth-parseFloat(cs.paddingLeft)-parseFloat(cs.paddingRight)))};
+  const parts=()=>{const s=v.querySelector(':scope>.zs');return s?[s,s.firstElementChild]:[null,null]};
+  let ro=null,cur=null;
+  const layout=fresh=>{
+    v.style.setProperty('--zz',z);
+    const[s,c]=parts();if(!s)return;
+    if(c!==cur){cur=c;ro&&ro.disconnect();ro=new ResizeObserver(()=>layout());ro.observe(c)}
+    const W=avail();
+    if(fresh||!c.dataset.w||(!d0&&Math.abs(Number(c.dataset.w)-W)>2)){c.dataset.w=W;c.style.width=W+'px'}
+    const w=Number(c.dataset.w);
+    c.style.transform='scale('+z+')';s.style.width=(w*z)+'px';s.style.height=(c.offsetHeight*z)+'px';
   };
-  const apply=()=>{v.style.setProperty('--zz',z);fitPages()};
-  new ResizeObserver(fitPages).observe(v);
-  new MutationObserver(fitPages).observe(v,{childList:true});
-  v.addEventListener('touchstart',e=>{if(e.touches.length===2){d0=dist(e.touches);z0=z}},{passive:true});
-  v.addEventListener('touchmove',e=>{if(e.touches.length===2&&d0){e.preventDefault();z=Math.min(4,Math.max(.4,z0*dist(e.touches)/d0));apply()}},{passive:false});
-  v.addEventListener('touchend',e=>{if(e.touches.length<2)d0=0});
-  v.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();z=Math.min(4,Math.max(.4,z*Math.exp(-e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?100:1)*.0015)));apply()}},{passive:false});
+  window.__zLayout=layout;
+  new ResizeObserver(()=>layout()).observe(v);
+  /* Zoom um Punkt y (Abstand vom oberen Fensterrand), linker Rand bleibt fest */
+  const zoomTo=(nz,yAnchor,stBase,slBase,zBase,yNow)=>{
+    const[s]=parts();const top=s?s.offsetTop:0,k=nz/zBase;z=nz;layout();
+    v.scrollTop=(stBase+yAnchor-top)*k+top-(yNow??yAnchor);
+    v.scrollLeft=slBase*k;
+  };
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  const midY=t=>(t[0].clientY+t[1].clientY)/2-v.getBoundingClientRect().top;
+  v.addEventListener('touchstart',e=>{if(e.touches.length===2){d0=dist(e.touches);z0=z;st0=v.scrollTop;sl0=v.scrollLeft;y0=midY(e.touches)}},{passive:true});
+  v.addEventListener('touchmove',e=>{if(e.touches.length===2&&d0){e.preventDefault();zoomTo(cl(z0*dist(e.touches)/d0),y0,st0,sl0,z0,midY(e.touches))}},{passive:false});
+  v.addEventListener('touchend',e=>{if(e.touches.length<2&&d0){d0=0;layout()}});
+  v.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();
+    const dy=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?100:1),y=e.clientY-v.getBoundingClientRect().top;
+    zoomTo(cl(z*Math.exp(-dy*.0015)),y,v.scrollTop,v.scrollLeft,z)}},{passive:false});
 })();
 
 /* ---------- MP3-Player ---------- */
