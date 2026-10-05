@@ -196,6 +196,16 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
 const setStatus=m=>{$('#qs').textContent=m};
+/* Suche: Groß/Klein und Sonderzeichen gleichsetzen (ç=c, ğ=g, ş=s, ı/İ=i, ö=o, ü=u, ä=a, ß=s ...) – Länge bleibt gleich */
+const NMAP={'ı':'i','ß':'s','ø':'o','đ':'d','ł':'l','æ':'a','œ':'o'};
+const flat=s=>s.replace(/[^\u0000-\u007f]/gu,c=>NMAP[c]||Array.from(c.normalize('NFD'))[0]).toLowerCase();
+/* zusätzlich deutsche Ersatzschreibweisen: ue=ü=u, oe=ö=o, ae=ä=a, ss=ß=s */
+const norm=s=>flat(s).replace(/ue|oe|ae|ss/g,m=>m[0]);
+function normMap(t){
+  const a=flat(t),m=[],sp=[];let n='';
+  for(let i=0;i<a.length;){const d=a.substr(i,2),two=d==='ue'||d==='oe'||d==='ae'||d==='ss';n+=a[i];m.push(i);sp.push(two?2:1);i+=two?2:1}
+  return{n,m,sp};
+}
 function openDB(){return new Promise(res=>{try{const r=indexedDB.open('dateiablage',2);
   r.onupgradeneeded=()=>{for(const k of['n','b','t'])if(!r.result.objectStoreNames.contains(k))r.result.createObjectStore(k,{keyPath:'id'})};
   r.onsuccess=()=>{db=r.result;res()};r.onerror=()=>res()}catch(e){res()}})}
@@ -216,7 +226,7 @@ function blobOf(id){
   if(mem.has(id))return Promise.resolve(mem.get(id));
   return new Promise(res=>{if(!db)return res(null);try{const q=db.transaction('b').objectStore('b').get(id);q.onsuccess=()=>res(q.result?q.result.blob:null);q.onerror=()=>res(null)}catch(e){res(null)}});
 }
-function putText(id,txt){indexed.add(id);if(db)try{db.transaction('t','readwrite').objectStore('t').put({id,txt})}catch(e){}}
+function putText(id,txt){indexed.add(id);if(db)try{db.transaction('t','readwrite').objectStore('t').put({id,txt,nt:norm(txt),nv:2})}catch(e){}}
 function unindex(id){indexed.delete(id);if(db)try{db.transaction('t','readwrite').objectStore('t').delete(id)}catch(e){}}
 function loadAll(){return new Promise(res=>{if(!db)return res([]);try{const q=db.transaction('n').objectStore('n').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])}catch(e){res([])}})}
 function loadKeys(){return new Promise(res=>{if(!db)return res();try{const q=db.transaction('t').objectStore('t').getAllKeys();q.onsuccess=()=>{(q.result||[]).forEach(k=>indexed.add(k));res()};q.onerror=()=>res()}catch(e){res()}})}
@@ -244,7 +254,7 @@ function setMark(id,on){
 }
 const topOf=a=>a.filter(i=>!a.some(o=>o!==i&&isDesc(i,o)));
 function render(){
-  const t=$('#tree'),st=t.scrollTop,qv=($('#q').value||'').trim().toLowerCase();t.innerHTML='';$('#qw').classList.toggle('has',!!qv);
+  const t=$('#tree'),st=t.scrollTop,qv=norm(($('#q').value||'').trim());t.innerHTML='';$('#qw').classList.toggle('has',!!qv);
   const walk=(pid,d)=>kids(pid).forEach(n=>{
     const r=document.createElement('div');r.className='row'+((marked.has(n.id)||(!marked.size&&n.id===selId))?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'')+(cutd(n.id)?' cutd':'');
     r.style.paddingLeft=(6+d*18)+'px';
@@ -847,12 +857,14 @@ function scanText(q,tok){return new Promise(res=>{
   const hits=new Map();if(!db)return res(hits);
   try{const rq=db.transaction('t').objectStore('t').openCursor();
     rq.onsuccess=()=>{const c=rq.result;if(!c||tok!==qTok)return res(hits);
-      const t=c.value.txt,i=t.toLowerCase().indexOf(q);
-      if(i>=0){const s0=Math.max(0,i-40);hits.set(c.value.id,{pre:(s0>0?'… ':'')+t.slice(s0,i),m:t.slice(i,i+q.length),post:t.slice(i+q.length,i+q.length+70)+' …'})}
+      const t=c.value.txt,i=(c.value.nv===2?c.value.nt:norm(t)).indexOf(q);
+      if(i>=0){
+        const M=normMap(t),st=M.m[i]??i,e=q.length?(M.m[i+q.length-1]!==undefined?M.m[i+q.length-1]+M.sp[i+q.length-1]:i+q.length):st,s0=Math.max(0,st-40);
+        hits.set(c.value.id,{pre:(s0>0?'… ':'')+t.slice(s0,st),m:t.slice(st,e),post:t.slice(e,e+70)+' …'})}
       c.continue()};
     rq.onerror=()=>res(hits)}catch(e){res(hits)}})}
 async function runSearch(){
-  const tok=++qTok,q=$('#q').value.trim().toLowerCase();
+  const tok=++qTok,q=norm($('#q').value.trim());
   if(!q){contentHits=new Map();render();return}
   contentHits=await scanText(q,tok);if(tok!==qTok)return;render();
   if(nodes.some(n=>n.type==='file'&&!indexed.has(n.id))){
@@ -864,15 +876,23 @@ function clearSearch(){$('#q').value='';qTok++;contentHits=new Map();setStatus('
 $('#qc2').onclick=clearSearch;
 $('#q').addEventListener('keydown',e=>{if(e.key==='Escape')clearSearch()});
 $('#q').oninput=()=>{contentHits=new Map();render();clearTimeout(qd);qd=setTimeout(runSearch,400)};
+/* Treffer im Dateinamen farbig markieren (auch bei ç/ş/ğ/ı/ö/ü und ae/oe/ue/ss) */
+function hlName(el,name,q){
+  const M=normMap(name),i=M.n.indexOf(q);
+  if(i<0||!q){el.textContent=name;return}
+  const st=M.m[i],e=M.m[i+q.length-1]+M.sp[i+q.length-1];
+  const mk=document.createElement('mark');mk.textContent=name.slice(st,e);
+  el.append(name.slice(0,st),mk,name.slice(e));
+}
 function searchList(t,q){
-  const res=nodes.map(n=>{const h=contentHits.get(n.id);return(n.name.toLowerCase().includes(q)||h)?{n,h}:null}).filter(Boolean).sort((a,b)=>a.n.name.localeCompare(b.n.name,'de'));
+  const res=nodes.map(n=>{const h=contentHits.get(n.id);return(norm(n.name).includes(q)||h)?{n,h}:null}).filter(Boolean).sort((a,b)=>a.n.name.localeCompare(b.n.name,'de'));
   if(!res.length){const d=document.createElement('div');d.className='empty';d.style.marginTop='30px';d.textContent='Keine Treffer.';t.appendChild(d);return}
   res.slice(0,500).forEach(({n,h})=>{
     const r=document.createElement('div');r.className='row'+(marked.has(n.id)?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'');r.dataset.id=n.id;r.style.paddingLeft='12px';
     const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};
     const ic=document.createElement('span');ic.textContent=icon(n);
     const box=document.createElement('div');box.style.cssText='min-width:0;flex:1;overflow:hidden';
-    const l1=document.createElement('div');l1.className='nm';l1.textContent=n.name;
+    const l1=document.createElement('div');l1.className='nm';hlName(l1,n.name,q);
     const pa=document.createElement('span');pa.style.cssText='color:var(--mut);font-size:12px;margin-left:8px';pa.textContent=fpath(n.parent);l1.appendChild(pa);
     box.appendChild(l1);
     if(h){
