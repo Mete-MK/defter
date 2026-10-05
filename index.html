@@ -246,7 +246,7 @@ const topOf=a=>a.filter(i=>!a.some(o=>o!==i&&isDesc(i,o)));
 function render(){
   const t=$('#tree'),st=t.scrollTop,qv=($('#q').value||'').trim().toLowerCase();t.innerHTML='';$('#qw').classList.toggle('has',!!qv);
   const walk=(pid,d)=>kids(pid).forEach(n=>{
-    const r=document.createElement('div');r.className='row'+((marked.has(n.id)||(!marked.size&&n.id===selId))?' sel':'')+(n.id===selId?' cur':'')+(cutd(n.id)?' cutd':'');
+    const r=document.createElement('div');r.className='row'+((marked.has(n.id)||(!marked.size&&n.id===selId))?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'')+(cutd(n.id)?' cutd':'');
     r.style.paddingLeft=(6+d*18)+'px';
     const isF=n.type==='folder',has=isF&&kids(n.id).length>0;
     const tg=document.createElement('span');tg.className='tg'+(has?'':' none');tg.textContent=open.has(n.id)?'−':'+';
@@ -275,11 +275,11 @@ function render(){
   root.onclick=()=>{selId='root';render()};dropTarget(root,'root');t.appendChild(root);
   if(qv)searchList(t,qv);else walk('root',1);
   $('#bD').textContent=marked.size?'🗑 Löschen ('+marked.size+')':'🗑 Löschen';updTT();
-  $('#bM').textContent=marked.size?'☐ Auswahl aufheben':'☑ Alle markieren';
+  $('#bM').textContent=marked.size?'✕ Auswahl aufheben':'☑ Alle markieren';
   $('#bPs').textContent=clip.ids.length?'📋 Einfügen ('+clip.ids.length+')':'📋 Einfügen';
   t.scrollTop=st;
   const s=byId(selId);let p=[],c=s;while(c&&c.id!=='root'){p.unshift(c.name);c=byId(c.parent)}
-  $('#path').textContent=marked.size?marked.size+' Eintrag/Einträge markiert – Löschen, Verschieben und Umbenennen beziehen sich darauf':'Ausgewählt: /'+p.join('/')+usageTxt;
+  $('#path').textContent=marked.size?marked.size+' Eintrag/Einträge markiert – Löschen, Verschieben und Umbenennen beziehen sich darauf':(s?'Ausgewählt: /'+p.join('/'):'Nichts ausgewählt')+usageTxt;
 }
 function targetFolder(){const s=byId(selId);if(!s)return 'root';return s.type==='folder'?s.id:s.parent}
 
@@ -287,9 +287,11 @@ $('#bF').onclick=async()=>{
   const name=await ask('Name des neuen Ordners:',{input:true,ok:'Anlegen'});if(!name)return;
   const n={id:uid(),parent:targetFolder(),type:'folder',name};nodes.push(n);put(n);open.add(n.parent);selId=n.id;render();
 };
-$('#bM').onclick=()=>{if(marked.size)marked.clear();else nodes.forEach(n=>marked.add(n.id));render()};
+function releaseSel(){marked.clear();selId=null;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}
+$('#bM').onclick=()=>{if(marked.size)releaseSel();else{nodes.forEach(n=>marked.add(n.id));if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}};
+$('#tree').addEventListener('click',e=>{if(e.target===e.currentTarget)releaseSel()});
 $('#bD').onclick=async()=>{
-  const tg=topOf(marked.size?[...marked]:(selId!=='root'?[selId]:[]));
+  const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
   if(!tg.length)return toast('Bitte zuerst einen Eintrag markieren (mehrere: Kästchen anhaken).');
   const ids=new Set();const col=i=>{ids.add(i);kids(i).forEach(x=>col(x.id))};tg.forEach(col);
   const all=[...ids].map(byId).filter(Boolean),fi=all.filter(x=>x.type==='file').length,fo=all.length-fi;
@@ -349,7 +351,7 @@ function pickFolder(targets){
   });
 }
 $('#bV').onclick=async()=>{
-  const tg=topOf(marked.size?[...marked]:(selId!=='root'?[selId]:[]));
+  const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
   if(!tg.length)return toast('Bitte zuerst Ordner oder Dateien markieren (mehrere: Kästchen anhaken).');
   const dest=await pickFolder(tg);if(dest===null)return;
   await moveItems(tg,dest);
@@ -358,7 +360,8 @@ $('#bV').onclick=async()=>{
 /* ---------- Tastatur: Enter bestätigt, Esc bricht ab, Entf löscht ---------- */
 document.addEventListener('keydown',e=>{
   const vis=id=>$(id).style.display==='flex',t=e.target,tn=t.tagName;
-  if(e.key==='Escape'){for(const[o,c]of[['#dlg','#dno'],['#lg','#lno'],['#mv','#mno'],['#sv','#sno'],['#qp','#qx']])if(vis(o)){$(c).click();e.preventDefault();break}}
+  if(e.key==='Escape'){let any=false;for(const[o,c]of[['#dlg','#dno'],['#lg','#lno'],['#mv','#mno'],['#sv','#sno'],['#qp','#qx']])if(vis(o)){$(c).click();e.preventDefault();any=true;break}
+    if(!any&&marked.size&&!['INPUT','TEXTAREA'].includes(tn)&&!t.isContentEditable)releaseSel()}
   else if(e.key==='Enter'){
     if(tn==='BUTTON'||tn==='INPUT'||tn==='TEXTAREA')return;
     if(vis('#dlg'))$('#dok').click();else if(vis('#mv'))$('#mok').click();else if(vis('#sv'))$('#sok').click();
@@ -764,7 +767,7 @@ let clip={ids:[],mode:null};
 const cutd=id=>clip.mode==='cut'&&clip.ids.some(c=>isDesc(id,c));
 const icon=n=>n.type==='folder'?'📁':n.ext==='pdf'?'📕':n.ext==='docx'?'📘':AUDIO.includes(n.ext)?'🎵':'📄';
 function clipSet(cut){
-  const tg=topOf(marked.size?[...marked]:(selId!=='root'?[selId]:[]));
+  const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
   if(!tg.length)return toast('Bitte zuerst Ordner oder Dateien markieren.');
   clip={ids:tg,mode:cut?'cut':'copy'};render();
   toast(tg.length+' Eintrag/Einträge '+(cut?'ausgeschnitten':'kopiert')+' – Zielordner wählen und „Einfügen“');
@@ -865,7 +868,7 @@ function searchList(t,q){
   const res=nodes.map(n=>{const h=contentHits.get(n.id);return(n.name.toLowerCase().includes(q)||h)?{n,h}:null}).filter(Boolean).sort((a,b)=>a.n.name.localeCompare(b.n.name,'de'));
   if(!res.length){const d=document.createElement('div');d.className='empty';d.style.marginTop='30px';d.textContent='Keine Treffer.';t.appendChild(d);return}
   res.slice(0,500).forEach(({n,h})=>{
-    const r=document.createElement('div');r.className='row'+(marked.has(n.id)?' sel':'')+(n.id===selId?' cur':'');r.dataset.id=n.id;r.style.paddingLeft='12px';
+    const r=document.createElement('div');r.className='row'+(marked.has(n.id)?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'');r.dataset.id=n.id;r.style.paddingLeft='12px';
     const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};
     const ic=document.createElement('span');ic.textContent=icon(n);
     const box=document.createElement('div');box.style.cssText='min-width:0;flex:1;overflow:hidden';
