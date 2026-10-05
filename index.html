@@ -87,6 +87,11 @@ mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
 #mp{display:none;flex-direction:column;gap:4px;padding:6px 8px;border-top:1px solid var(--bd);background:var(--pane)}
 #mpt{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #mpc{display:flex;gap:6px;align-items:center}#mpc audio{flex:1;min-width:0;height:36px}#mpc button{padding:4px 8px}
+#qw{position:relative;flex:1;min-width:0;display:flex}
+#top #q{padding-right:40px;width:100%}
+#q::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+#qc2{display:none;position:absolute;right:4px;top:50%;transform:translateY(-50%);width:32px;height:32px;padding:0;border:0;border-radius:50%;background:var(--hov);color:var(--tx);font-size:15px;line-height:1}
+#qw.has #qc2{display:block}
 .empty{color:var(--mut);text-align:center;margin-top:20vh}
 #ed{outline:none;min-height:50vh}
 #tb{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--bd);background:var(--pane)}
@@ -98,7 +103,7 @@ mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
 <body>
 <div id="left">
   <div id="logoL"></div>
-  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"></div>
+  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><span id="qw"><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"><button id="qc2" title="Suche schließen" aria-label="Suche schließen">✕</button></span></div>
   <div id="qs"></div>
   <div id="tools">
   <div class="bar">
@@ -239,7 +244,7 @@ function setMark(id,on){
 }
 const topOf=a=>a.filter(i=>!a.some(o=>o!==i&&isDesc(i,o)));
 function render(){
-  const t=$('#tree'),st=t.scrollTop,qv=($('#q').value||'').trim().toLowerCase();t.innerHTML='';
+  const t=$('#tree'),st=t.scrollTop,qv=($('#q').value||'').trim().toLowerCase();t.innerHTML='';$('#qw').classList.toggle('has',!!qv);
   const walk=(pid,d)=>kids(pid).forEach(n=>{
     const r=document.createElement('div');r.className='row'+((marked.has(n.id)||(!marked.size&&n.id===selId))?' sel':'')+(n.id===selId?' cur':'')+(cutd(n.id)?' cutd':'');
     r.style.paddingLeft=(6+d*18)+'px';
@@ -852,6 +857,9 @@ async function runSearch(){
     contentHits=await scanText(q,tok);if(tok!==qTok)return;render();
   }
 }
+function clearSearch(){$('#q').value='';qTok++;contentHits=new Map();setStatus('');render()}
+$('#qc2').onclick=clearSearch;
+$('#q').addEventListener('keydown',e=>{if(e.key==='Escape')clearSearch()});
 $('#q').oninput=()=>{contentHits=new Map();render();clearTimeout(qd);qd=setTimeout(runSearch,400)};
 function searchList(t,q){
   const res=nodes.map(n=>{const h=contentHits.get(n.id);return(n.name.toLowerCase().includes(q)||h)?{n,h}:null}).filter(Boolean).sort((a,b)=>a.n.name.localeCompare(b.n.name,'de'));

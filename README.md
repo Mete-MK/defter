@@ -24,7 +24,7 @@ Die Dateien in diesem Ordner müssen einmal unter einer https-Adresse erreichbar
 ## Wichtig
 - Die Daten liegen nur auf diesem Gerät. iPad und iPhone haben getrennte Ablagen. Sichere wichtige Dateien zusätzlich (Original behalten oder "Herunterladen").
 - iOS entscheidet über den Speicherplatz für Web-Apps. Für Apps vom Home-Bildschirm ist er großzügig, eine feste Zusage gibt es aber nicht. Beim Löschen der App gehen die Daten verloren.
-- Updates: Geänderte Dateien (index.html und sw.js) bei GitHub hochladen, vorhandene werden ersetzt. In sw.js muss die Versionszahl höher sein als vorher (jetzt `defter-v5`, beim nächsten Mal v6). Danach die App auf dem iPad mit Internet zweimal komplett beenden und neu öffnen.
+- Updates: Geänderte Dateien (index.html und sw.js) bei GitHub hochladen, vorhandene werden ersetzt. In sw.js muss die Versionszahl höher sein als vorher (jetzt `defter-v6`, beim nächsten Mal v7). Danach die App auf dem iPad mit Internet zweimal komplett beenden und neu öffnen.
 
 ## Neuer App-Name
 Der Name auf dem Home-Bildschirm wird beim Hinzufügen festgelegt. Lösche das alte Symbol (gedrückt halten > App entfernen > **Vom Home-Bildschirm entfernen**) und füge die App danach neu hinzu. Die gespeicherten Dateien bleiben dabei erhalten, solange du die Web-App-Daten nicht löschst.
