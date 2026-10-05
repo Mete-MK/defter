@@ -78,7 +78,8 @@ mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
 #split:hover,#split.dr{background:rgba(37,99,235,.3)}
 #top{display:flex;gap:6px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--bd)}
 #top #q{flex:1;margin:0;min-width:0}
-#tt{min-width:44px;font-size:15px;padding:8px 10px}
+#tt{min-width:44px;font-size:15px;padding:8px 12px;white-space:nowrap;background:#0b4a8f;border-color:#0b4a8f;color:#fff;font-weight:600}
+#tt:active{background:#083a73}
 #tools{display:none;border-bottom:1px solid var(--bd)}#tools.on{display:block}#tools .bar:last-child{border-bottom:0}
 #va{position:absolute;right:16px;bottom:16px;display:flex;gap:10px;z-index:5}
 #va button{width:48px;height:48px;border-radius:50%;font-size:20px;padding:0;box-shadow:0 2px 10px rgba(0,0,0,.35)}
@@ -97,7 +98,7 @@ mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
 <body>
 <div id="left">
   <div id="logoL"></div>
-  <div id="top"><button id="tt" title="Funktionen ein-/ausblenden">▸</button><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"></div>
+  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"></div>
   <div id="qs"></div>
   <div id="tools">
   <div class="bar">
@@ -907,7 +908,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')cm.style.display='no
 $('#tree').addEventListener('scroll',()=>{cm.style.display='none'});
 
 /* ---------- Werkzeugleiste ein-/ausklappen ---------- */
-function updTT(){const on=$('#tools').classList.contains('on');$('#tt').textContent=(on?'▾':'▸')+(marked.size?' '+marked.size:'')}
+function updTT(){const on=$('#tools').classList.contains('on');$('#tt').textContent=(on?'▾':'▸')+' Menü'+(marked.size?' ('+marked.size+')':'')}
 function setTools(on){$('#tools').classList.toggle('on',on);try{localStorage.setItem('tools',on?'1':'0')}catch(e){}updTT()}
 $('#tt').onclick=()=>setTools(!$('#tools').classList.contains('on'));
 try{if(localStorage.getItem('tools')==='1')$('#tools').classList.add('on')}catch(e){}
