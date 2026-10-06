@@ -102,6 +102,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body.nol #left,body.nol #split{display:none}
 #zc{position:absolute;left:16px;bottom:16px;z-index:5;display:flex;gap:8px}
 #zc button{min-width:44px;height:44px;border-radius:22px;padding:0 12px;font-size:18px;box-shadow:0 2px 10px rgba(0,0,0,.35);opacity:.9}
+#sb{display:none;align-items:center;gap:4px;padding:5px 8px;border-bottom:1px solid var(--bd);background:var(--hov)}
+body.sel #sb{display:flex}
+#sbn{flex:1;font-size:13px;white-space:nowrap}
+#sb button{padding:5px 9px;font-size:15px}
+.cb{width:18px;height:18px}
+.row{-webkit-touch-callout:none}
 .empty{color:var(--mut);text-align:center;margin-top:20vh}
 #ed{outline:none;min-height:50vh}
 #tb{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--bd);background:var(--pane)}
@@ -134,6 +140,7 @@ body.nol #left,body.nol #split{display:none}
     <button id="bD">🗑 Löschen</button>
   </div>
 </div>
+  <div id="sb"><span id="sbn">0 ausgewählt</span><button id="sba" title="Alle auswählen">Alle</button><button id="sbc" title="Kopieren">⧉</button><button id="sbx" title="Ausschneiden">✂</button><button id="sbv" title="Verschieben">↪</button><button id="sbd" title="Löschen">🗑</button><button id="sbe" title="Auswahl beenden">✕</button></div>
   <div id="tree"></div>
   <div id="mp"><div id="mpt"></div><div id="mpc"><button id="mpp" title="Zurück">⏮</button><audio id="au" controls preload="metadata"></audio><button id="mpn" title="Weiter">⏭</button><button id="mpx" title="Schließen">✕</button></div></div>
   <div id="path"></div>
@@ -196,7 +203,7 @@ body.nol #left,body.nol #split{display:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
-const marked=new Set();let multi=false,dragIds=null;
+const marked=new Set();let multi=false,dragIds=null,lpAt=0;
 function ask(title,o={}){return new Promise(res=>{const d=$('#dlg'),i=$('#di');$('#dt').textContent=title;i.style.display=o.input?'block':'none';i.value=o.def||'';$('#dok').textContent=o.ok||'OK';$('#dno').textContent=o.cancel||'Abbrechen';d.style.display='flex';setTimeout(()=>o.input?(i.focus(),i.select()):$('#dok').focus(),60);
 const end=v=>{d.style.display='none';res(v)};
 $('#dok').onclick=()=>end(o.input?(i.value.trim()||null):true);$('#dno').onclick=()=>end(o.input?null:false);i.onkeydown=e=>{if(e.key==='Enter')$('#dok').click()}})}
@@ -206,7 +213,7 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 12';
+const APPV='Version 13';
 const setStatus=m=>{$('#qs').textContent=m};
 /* Suche: Groß/Klein und Sonderzeichen gleichsetzen (ç=c, ğ=g, ş=s, ı/İ=i, ö=o, ü=u, ä=a, ß=s ...) – Länge bleibt gleich */
 const NMAP={'ı':'i','ß':'s','ø':'o','đ':'d','ł':'l','æ':'a','œ':'o'};
@@ -275,10 +282,15 @@ function render(){
     tg.onclick=e=>{e.stopPropagation();open.has(n.id)?open.delete(n.id):open.add(n.id);render()};
     const ic=document.createElement('span');ic.textContent=isF?(open.has(n.id)?'📂':'📁'):n.ext==='pdf'?'📕':n.ext==='docx'?'📘':(AUDIO.includes(n.ext)?'🎵':'📄');
     const nm=document.createElement('span');nm.className='nm';nm.textContent=n.name;
-    {const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};r.append(cb)}
+    if(multi){const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};r.append(cb)}
     r.append(tg,ic,nm);
+    {let lt=null,lx=0,ly=0;const lc=()=>{clearTimeout(lt);lt=null};
+      r.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;lx=e.clientX;ly=e.clientY;lc();lt=setTimeout(()=>{lt=null;lpAt=Date.now();if(!multi)toast('Auswahlmodus: Einträge antippen, ✕ beendet ihn');multi=true;setMark(n.id,true);render()},420)});
+      r.addEventListener('pointermove',e=>{if(lt&&Math.hypot(e.clientX-lx,e.clientY-ly)>10)lc()});
+      ['pointerup','pointercancel','pointerleave'].forEach(t=>r.addEventListener(t,lc))}
     r.onclick=e=>{
-      if(multi||e.ctrlKey||e.metaKey){setMark(n.id,!marked.has(n.id));render();return}
+      if(Date.now()-lpAt<700)return;
+      if(multi||e.ctrlKey||e.metaKey){multi=true;setMark(n.id,!marked.has(n.id));render();return}
       selId=n.id;
       if(isF){
         if(e.shiftKey||open.has(n.id)){open.has(n.id)?open.delete(n.id):open.add(n.id)}
@@ -297,7 +309,7 @@ function render(){
   root.onclick=()=>{selId='root';render()};dropTarget(root,'root');t.appendChild(root);
   if(qv)searchList(t,qv);else walk('root',1);
   $('#bD').textContent=marked.size?'🗑 Löschen ('+marked.size+')':'🗑 Löschen';updTT();
-  $('#bM').textContent=marked.size?'✕ Auswahl aufheben':'☑ Alle markieren';
+  $('#bM').textContent=multi?'✕ Auswahl beenden':'☑ Auswählen';document.body.classList.toggle('sel',multi);$('#sbn').textContent=marked.size+' ausgewählt';
   $('#bPs').textContent=clip.ids.length?'📋 Einfügen ('+clip.ids.length+')':'📋 Einfügen';
   t.scrollTop=st;
   const s=byId(selId);let p=[],c=s;while(c&&c.id!=='root'){p.unshift(c.name);c=byId(c.parent)}
@@ -309,9 +321,12 @@ $('#bF').onclick=async()=>{
   const name=await ask('Name des neuen Ordners:',{input:true,ok:'Anlegen'});if(!name)return;
   const n={id:uid(),parent:targetFolder(),type:'folder',name};nodes.push(n);put(n);open.add(n.parent);selId=n.id;render();
 };
-function releaseSel(){marked.clear();selId=null;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}
-$('#bM').onclick=()=>{if(marked.size)releaseSel();else{nodes.forEach(n=>marked.add(n.id));if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}};
-$('#tree').addEventListener('click',e=>{if(e.target===e.currentTarget)releaseSel()});
+function releaseSel(){marked.clear();selId=null;multi=false;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}
+$('#bM').onclick=()=>{if(multi)releaseSel();else{multi=true;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}};
+$('#sba').onclick=()=>{nodes.forEach(n=>marked.add(n.id));render()};
+$('#sbe').onclick=releaseSel;
+$('#sbd').onclick=()=>$('#bD').click();$('#sbc').onclick=()=>$('#bCp').click();$('#sbx').onclick=()=>$('#bCt').click();$('#sbv').onclick=()=>$('#bV').click();
+$('#tree').addEventListener('click',e=>{if(e.target===e.currentTarget&&Date.now()-lpAt>700)releaseSel()});
 $('#bD').onclick=async()=>{
   const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
   if(!tg.length)return toast('Bitte zuerst einen Eintrag markieren (mehrere: Kästchen anhaken).');
@@ -383,7 +398,7 @@ $('#bV').onclick=async()=>{
 document.addEventListener('keydown',e=>{
   const vis=id=>$(id).style.display==='flex',t=e.target,tn=t.tagName;
   if(e.key==='Escape'){let any=false;for(const[o,c]of[['#dlg','#dno'],['#lg','#lno'],['#mv','#mno'],['#sv','#sno'],['#qp','#qx']])if(vis(o)){$(c).click();e.preventDefault();any=true;break}
-    if(!any&&marked.size&&!['INPUT','TEXTAREA'].includes(tn)&&!t.isContentEditable)releaseSel()}
+    if(!any&&(marked.size||multi)&&!['INPUT','TEXTAREA'].includes(tn)&&!t.isContentEditable)releaseSel()}
   else if(e.key==='Enter'){
     if(tn==='BUTTON'||tn==='INPUT'||tn==='TEXTAREA')return;
     if(vis('#dlg'))$('#dok').click();else if(vis('#mv'))$('#mok').click();else if(vis('#sv'))$('#sok').click();
@@ -392,7 +407,7 @@ document.addEventListener('keydown',e=>{
     if(['INPUT','TEXTAREA'].includes(tn)||t.isContentEditable||['#dlg','#mv','#sv','#qp','#lg'].some(vis))return;
     if(e.key.toLowerCase()==='c'&&window.getSelection&&String(getSelection()))return;
     e.preventDefault();
-    ({c:()=>$('#bCp').click(),x:()=>$('#bCt').click(),v:()=>$('#bPs').click(),a:()=>$('#bM').textContent.includes('Alle')&&$('#bM').click()})[e.key.toLowerCase()]();
+    ({c:()=>$('#bCp').click(),x:()=>$('#bCt').click(),v:()=>$('#bPs').click(),a:()=>{multi=true;nodes.forEach(n=>marked.add(n.id));render()}})[e.key.toLowerCase()]();
   }
   else if(e.key==='F2'){
     if(['INPUT','TEXTAREA'].includes(tn)||t.isContentEditable||['#dlg','#mv','#sv','#qp','#lg'].some(vis))return;
@@ -903,8 +918,8 @@ function searchList(t,q){
       const l2=document.createElement('div');l2.style.cssText='font-size:12px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
       const m=document.createElement('mark');m.textContent=h.m;l2.append(h.pre,m,h.post);box.appendChild(l2);
     }
-    r.append(cb,ic,box);
-    r.onclick=()=>{selId=n.id;
+    if(multi)r.append(cb);r.append(ic,box);
+    r.onclick=()=>{if(Date.now()-lpAt<700)return;if(multi){setMark(n.id,!marked.has(n.id));render();return}selId=n.id;
       if(n.type==='file')openFile(n);
       else{$('#q').value='';setStatus('');let x=byId(n.id);while(x&&x.id!=='root'){open.add(x.id);x=byId(x.parent)}render()}};
     t.appendChild(r);
@@ -916,7 +931,7 @@ function searchList(t,q){
 const cm=$('#cm');
 function menuAdd(label,key,fn){const d=document.createElement('div');d.className='cmi';d.innerHTML='<span></span><small></small>';d.firstChild.textContent=label;d.lastChild.textContent=key||'';d.onclick=fn;cm.appendChild(d)}
 $('#tree').addEventListener('contextmenu',e=>{
-  e.preventDefault();
+  e.preventDefault();if(Date.now()-lpAt<900)return;
   const r=e.target.closest('.row'),id=r&&r.dataset.id;
   if(id){if(!marked.has(id))marked.clear();selId=id;render()}
   cm.innerHTML='';const n=id?byId(id):null;
