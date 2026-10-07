@@ -45,7 +45,7 @@
     }
     button:active, label.btn:active { background-color: #3a3a3c; }
     input[type="file"] { display: none; }
-    
+
     #main-container {
       display: flex;
       flex: 1;
@@ -109,10 +109,10 @@
     }
     /* docx-preview Dark Mode Overrides */
     .docx-wrapper { background: transparent !important; padding: 0 !important; }
-    .docx-wrapper > section.docx { 
-      background: #1e1e1e !important; 
-      color: #fff !important; 
-      box-shadow: none !important; 
+    .docx-wrapper > section.docx {
+      background: #1e1e1e !important;
+      color: #fff !important;
+      box-shadow: none !important;
       margin-bottom: 20px !important;
     }
   </style>
@@ -167,7 +167,7 @@
     function renderFileList() {
       const filter = searchInput.value.toLowerCase();
       fileListEl.innerHTML = '';
-      
+
       songsMap.forEach((song) => {
         if (song.name.toLowerCase().includes(filter)) {
           const li = document.createElement('li');
@@ -184,32 +184,32 @@
 
     async function displaySong(song) {
       viewerEl.innerHTML = '<p style="color:#888;">Lade Song...</p>';
-      
+
       try {
         const ext = song.ext;
-        
+
         if (ext === 'txt') {
           const text = await song.file.text();
           renderText(text);
-        } 
+        }
         else if (ext === 'html' || ext === 'htm') {
           const htmlContent = await song.file.text();
           renderHtml(htmlContent);
-        } 
+        }
         else if (ext === 'rtf') {
           const rtfRaw = await song.file.text();
           const parsedText = parseRTF(rtfRaw);
           renderText(parsedText);
-        } 
+        }
         else if (ext === 'docx') {
           await renderDOCX(song.file);
-        } 
+        }
         else if (ext === 'doc') {
           await renderBinaryDOC(song.file);
-        } 
+        }
         else if (ext === 'pdf') {
           await renderPDF(song.file);
-        } 
+        }
         else {
           viewerEl.innerHTML = `<div class="error-msg">Format .${ext} wird nicht unterstützt.</div>`;
         }
@@ -261,11 +261,11 @@
     async function renderBinaryDOC(file) {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
-      
+
       // Auslesen von lesbarem ASCII/UTF-16 Text aus binärem Stream
       let extractedText = '';
       let currentStr = '';
-      
+
       for (let i = 0; i < bytes.length; i++) {
         const charCode = bytes[i];
         // Filtere druckbare Zeichen & Zeilenumbrüche
