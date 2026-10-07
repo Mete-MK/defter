@@ -214,7 +214,7 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 15';
+const APPV='Version 17';
 const setStatus=m=>{$('#qs').textContent=m};
 /* Suche: Groß/Klein und Sonderzeichen gleichsetzen (ç=c, ğ=g, ş=s, ı/İ=i, ö=o, ü=u, ä=a, ß=s ...) – Länge bleibt gleich */
 const NMAP={'ı':'i','ß':'s','ø':'o','đ':'d','ł':'l','æ':'a','œ':'o'};
@@ -549,23 +549,44 @@ tr.addEventListener('drop',async e=>{
 
 /* ---------- Anzeige ---------- */
 function clearView(){$('#va')?.remove();$('#ttl').textContent='Keine Datei geöffnet';$('#view').innerHTML='<div class="empty"><div id="lc" style="margin-bottom:18px"></div>Datei links auswählen, um sie hier anzuzeigen.</div>';applyLogo()}
+const LIBURL={docx:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js',mammoth:'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js'};
+function ensureLib(k){
+  if(window[k])return Promise.resolve();
+  return new Promise((res,rej)=>{const sc=document.createElement('script');sc.src=LIBURL[k];sc.onload=()=>window[k]?res():rej(new Error(k+' fehlt'));sc.onerror=()=>rej(new Error(k+' nicht ladbar'));document.head.appendChild(sc)});
+}
+async function docxText(blob){
+  const z=await JSZip.loadAsync(blob),f=z.file('word/document.xml');if(!f)throw new Error('word/document.xml fehlt');
+  return (await f.async('string')).replace(/<w:tab\/>/g,'\t').replace(/<\/w:p>/g,'\n').replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&').trim();
+}
 async function openFile(n){
   openFileId=n.id;render();
   $('#ttl').textContent=n.name;const v=$('#view');v.innerHTML='<div class="empty" style="margin-top:10vh">Lade …</div>';
   const my=n.id;
+  let stage='Laden';
   try{
-    const blob=await blobOf(n.id);if(!blob)throw 0;
+    const blob=await blobOf(n.id);if(!blob)throw new Error('Dateiinhalt nicht im Speicher gefunden');if(!blob.size)throw new Error('Datei ist leer');
     if(n.ext==='txt'){const t=await blob.text();if(openFileId!==my)return;v.innerHTML='<div class="paper"><pre></pre></div>';v.querySelector('pre').textContent=t}
     else if(n.ext==='docx'){
       let done=false;
-      if(window.docx){try{
+      stage='docx-preview';
+      try{
+        await ensureLib('docx');
         const box=document.createElement('div');
         await docx.renderAsync(blob,box,null,{className:'docx',inWrapper:true,breakPages:true,ignoreLastRenderedPageBreak:true});
         if(openFileId!==my)return;v.innerHTML='';v.appendChild(box);
         const wr=box.querySelector('.docx-wrapper'),avail=v.clientWidth-24;
         if(wr&&wr.scrollWidth>avail)wr.style.zoom=avail/wr.scrollWidth;
-        done=true}catch(e){}}
-      if(!done){const r=await mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});if(openFileId!==my)return;v.innerHTML='<div class="paper">'+r.value+'</div>'}
+        done=true;
+      }catch(e){}
+      if(!done){
+        stage='mammoth';
+        try{await ensureLib('mammoth');const r=await mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});if(openFileId!==my)return;v.innerHTML='<div class="paper">'+r.value+'</div>';done=true}catch(e){}
+      }
+      if(!done){
+        stage='Textauszug';
+        const t=await docxText(blob);if(openFileId!==my)return;
+        v.innerHTML='<div class="paper"><div style="color:var(--mut);font-size:12px;margin-bottom:8px">Vereinfachte Ansicht (nur Text)</div><pre></pre></div>';v.querySelector('pre').textContent=t;
+      }
     }
     else if(AUDIO.includes(n.ext)){
       v.innerHTML='<div class="paper" style="text-align:center"><div style="font-size:54px">🎵</div><div class="mt" style="font-weight:600;margin:8px 0"></div><div style="color:var(--mut)">Läuft im Player links unten. Du kannst weiter durch Ordner und Texte blättern – die Musik läuft weiter.</div></div>';
@@ -582,7 +603,12 @@ async function openFile(n){
         await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
       }
     }
-  }catch(err){if(openFileId===my)v.innerHTML='<div class="empty">Die Datei konnte nicht angezeigt werden.</div>'}
+  }catch(err){
+    if(openFileId===my){
+      v.innerHTML='<div class="empty">Die Datei konnte nicht angezeigt werden.<div class="dg" style="font-size:12px;margin-top:10px;word-break:break-word"></div></div>';
+      v.querySelector('.dg').textContent='Fehler bei „'+stage+'“: '+((err&&err.message)||err)+' [docx-preview:'+!!window.docx+' mammoth:'+!!window.mammoth+' JSZip:'+!!window.JSZip+' pdf.js:'+!!window.pdfjsLib+']';
+    }
+  }
 }
 
 /* ---------- Editor + DOCX-Export ---------- */
