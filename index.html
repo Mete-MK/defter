@@ -8,7 +8,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <meta name="theme-color" content="#121212" />
 
-  <!-- externe Bibliotheken für DOCX, PDF und HTML Sanitization -->
+  <!-- externe Bibliotheken -->
   <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
@@ -42,6 +42,7 @@
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.9rem;
+      display: inline-block;
     }
     button:active, label.btn:active { background-color: #3a3a3c; }
     input[type="file"] { display: none; }
@@ -99,6 +100,7 @@
     .text-content {
       white-space: pre-wrap;
       font-family: monospace;
+      font-size: 1.1rem;
     }
     .error-msg {
       color: #ff453a;
@@ -107,7 +109,7 @@
       border-radius: 6px;
       border: 1px solid #ff453a;
     }
-    /* docx-preview Dark Mode Overrides */
+    /* docx-preview Dark Mode Styles */
     .docx-wrapper { background: transparent !important; padding: 0 !important; }
     .docx-wrapper > section.docx {
       background: #1e1e1e !important;
@@ -123,8 +125,8 @@
     <h1>Defter Song Reader</h1>
     <div class="controls">
       <label class="btn" for="file-input">Dateien importieren</label>
-      <!-- Erweitertes accept Attribute für DOC, DOCX, TXT, RTF, HTML, PDF -->
-      <input type="file" id="file-input" multiple accept=".txt,.rtf,.doc,.docx,.html,.htm,.pdf" />
+      <!-- Umfassendes accept-Attribut für Betriebssysteme (MIME-Types + Endungen) -->
+      <input type="file" id="file-input" multiple accept=".txt,.rtf,.doc,.docx,.html,.htm,.pdf,text/plain,text/rtf,text/html,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,application/rtf" />
       <button id="btn-new-song">+ Neuer Song</button>
     </div>
   </header>
@@ -142,10 +144,14 @@
   </div>
 
   <script>
-    // pdf.js worker set
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(err => console.log('SW reg error:', err));
+    }
+
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    const songsMap = new Map(); // Speichert id -> { file, name, ext }
+    // Map speichert die geladenen Dateien im Arbeitsspeicher
+    const songsMap = new Map();
     const fileInput = document.getElementById('file-input');
     const fileListEl = document.getElementById('file-list');
     const viewerEl = document.getElementById('viewer');
@@ -159,6 +165,8 @@
       for (let file of files) {
         const id = file.name + '_' + file.size + '_' + file.lastModified;
         const ext = file.name.split('.').pop().toLowerCase();
+
+        // Speichere die Original-Datei unberührt
         songsMap.set(id, { id, name: file.name, file, ext });
       }
       renderFileList();
@@ -211,15 +219,17 @@
           await renderPDF(song.file);
         }
         else {
-          viewerEl.innerHTML = `<div class="error-msg">Format .${ext} wird nicht unterstützt.</div>`;
+          // Fallback: versuche Textanzeige
+          const rawText = await song.file.text();
+          renderText(rawText);
         }
       } catch (err) {
         console.error(err);
-        viewerEl.innerHTML = `<div class="error-msg">Fehler beim Laden der Datei: ${err.message}</div>`;
+        viewerEl.innerHTML = `<div class="error-msg">Fehler beim Laden: ${err.message}</div>`;
       }
     }
 
-    // --- RENDER-FUNKTIONEN ---
+    // --- ANZEIGE-LOGIK ---
 
     function renderText(text) {
       const div = document.createElement('div');
@@ -230,87 +240,81 @@
     }
 
     function renderHtml(htmlContent) {
-      // Entfernt potenziell schädliche Skripts vor dem Einfügen
       const cleanHtml = htmlContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
       viewerEl.innerHTML = cleanHtml;
     }
 
-    // Behebt den DOCX-Buffer-Fehler (erzeugt bei jedem Aufruf ein frisches ArrayBuffer)
+    // Behebt den DOCX-Puffer-Fehler
     async function renderDOCX(file) {
       const buffer = await file.arrayBuffer();
 
-      // Mammoth Versuch für schnelle HTML-Darstellung
       try {
-        // .slice(0) verhindert, dass der Puffer unbrauchbar wird
+        // buffer.slice(0) schützt den Hauptpuffer im State
         const result = await mammoth.convertToHtml({ arrayBuffer: buffer.slice(0) });
         if (result.value && result.value.trim().length > 0) {
           viewerEl.innerHTML = result.value;
           return;
         }
       } catch (mErr) {
-        console.warn('Mammoth-Konvertierung fehlgeschlagen, versuche docx-preview...', mErr);
+        console.warn('Mammoth konnte DOCX nicht rendern, nutze docx-preview...', mErr);
       }
 
-      // Fallback auf docx-preview
       viewerEl.innerHTML = '<div id="docx-container"></div>';
       const container = document.getElementById('docx-container');
       await docx.renderAsync(buffer.slice(0), container);
     }
 
-    // Parser für ältere binäre .doc-Dateien (Word 97-2003)
+    // Auslesen alter Word .doc-Dateien (Word 97-2003)
     async function renderBinaryDOC(file) {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
 
-      // Auslesen von lesbarem ASCII/UTF-16 Text aus binärem Stream
-      let extractedText = '';
-      let currentStr = '';
+      let text = '';
+      let chunk = '';
 
       for (let i = 0; i < bytes.length; i++) {
-        const charCode = bytes[i];
-        // Filtere druckbare Zeichen & Zeilenumbrüche
-        if ((charCode >= 32 && charCode <= 126) || charCode === 10 || charCode === 13) {
-          currentStr += String.fromCharCode(charCode);
-        } else if (bytes[i] === 0 && bytes[i+1] >= 32 && bytes[i+1] <= 126) {
-          // UTF-16LE Unterstützung
-          currentStr += String.fromCharCode(bytes[i+1]);
+        const b = bytes[i];
+        // Standard ASCII / Zeilenumbrüche
+        if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
+          chunk += String.fromCharCode(b);
+        } else if (b === 0 && i + 1 < bytes.length && bytes[i+1] >= 32 && bytes[i+1] <= 126) {
+          // UTF-16 Unicode
+          chunk += String.fromCharCode(bytes[i+1]);
           i++;
         } else {
-          if (currentStr.trim().length > 3) {
-            // Vermeidet binären Müll
-            if (!currentStr.includes('WordDocument') && !currentStr.includes('Root Entry') && !currentStr.includes('CompObj')) {
-              extractedText += currentStr + '\n';
+          if (chunk.trim().length > 2) {
+            // Ausfiltern interner Word-Metadaten
+            if (!chunk.includes('WordDocument') && !chunk.includes('Root Entry') && !chunk.includes('CompObj') && !chunk.includes('ObjectPool')) {
+              text += chunk + '\n';
             }
           }
-          currentStr = '';
+          chunk = '';
         }
       }
-      if (currentStr.trim().length > 3) {
-        extractedText += currentStr;
+      if (chunk.trim().length > 2) text += chunk;
+
+      if (!text.trim()) {
+        // Zweiter Fallback: UTF-8 Text-Read
+        text = await file.text();
+        text = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
       }
 
-      if (extractedText.trim().length === 0) {
-        throw new Error("Der Text aus der älteren .doc-Datei konnte nicht extrahiert werden.");
-      }
-
-      renderText(extractedText);
+      renderText(text);
     }
 
-    // Einfacher RTF-Parser zur Text-Extraktion
+    // RTF Steuerzeichen-Stripper
     function parseRTF(rtf) {
       return rtf
         .replace(/\\par[d]?/g, '\n')
         .replace(/\\tab/g, '\t')
-        .replace(/\\'[0-9a-fA-F]{2}/g, (match) => {
-          return String.fromCharCode(parseInt(match.substring(2), 16));
-        })
+        .replace(/\\'[0-9a-fA-F]{2}/g, (m) => String.fromCharCode(parseInt(m.substring(2), 16)))
         .replace(/{\\[*][^}]+}/g, '')
         .replace(/\\[a-zA-Z]+-?\d* ?/g, '')
         .replace(/[{}]/g, '')
         .trim();
     }
 
-    // PDF Rendering
+    // PDF Renderer
     async function renderPDF(file) {
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
