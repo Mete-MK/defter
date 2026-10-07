@@ -77,8 +77,9 @@ mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
 #eb button{padding:10px 18px;font-size:15px}
 #split{flex:none;position:relative;z-index:4;width:26px;margin:0 -13px;cursor:col-resize;touch-action:none}
 #split::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--splc,#000)}
-#sph{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:28px;height:64px;border-radius:14px;background:var(--splc,#000);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:12px;letter-spacing:-2px;pointer-events:none;white-space:nowrap}
-#split.dr #sph{width:60px;height:60px;border-radius:50%;background:#0b4a8f;color:#fff;font-size:20px;box-shadow:0 2px 12px rgba(0,0,0,.45)}
+#sph{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:28px;height:64px;border-radius:14px;background:var(--splc,#000);color:var(--bg);display:none;align-items:center;justify-content:center;font-size:12px;letter-spacing:-2px;pointer-events:none;white-space:nowrap}
+#split.dr #sph{display:flex;width:30px;height:30px;border-radius:50%;background:rgba(11,74,143,.85);color:#fff;font-size:10px;letter-spacing:-2px;box-shadow:0 1px 6px rgba(0,0,0,.35)}
+@media (hover:hover){#split:hover::before{background:#0b4a8f}}
 #split.dr::before{background:#0b4a8f}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--splc:#e8e8e8}}
 :root[data-theme="dark"]{--splc:#e8e8e8}
@@ -155,7 +156,7 @@ body.sel #sb{display:flex}
   <b>Mehrere Ordner hochladen</b>
   <div id="qt" style="font-size:13px;color:var(--mut)"></div>
   <div id="ql"></div>
-  <div style="font-size:12px;color:var(--mut)">Lässt dein Gerät keine Ordnerauswahl zu, geht es auch per ZIP: Ordner in der Dateien-App gedrückt halten, „Komprimieren“ wählen und hier die ZIP-Datei auswählen.</div>
+  <div id="qh" style="font-size:12px;color:var(--mut)">Lässt dein Gerät keine Ordnerauswahl zu, geht es auch per ZIP: Ordner in der Dateien-App gedrückt halten, „Komprimieren“ wählen und hier die ZIP-Datei auswählen.</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
     <button id="qz" class="pri">📦 ZIP-Datei wählen</button>
     <button id="qa">＋ Ordner wählen</button>
@@ -213,7 +214,7 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 13';
+const APPV='Version 15';
 const setStatus=m=>{$('#qs').textContent=m};
 /* Suche: Groß/Klein und Sonderzeichen gleichsetzen (ç=c, ğ=g, ş=s, ı/İ=i, ö=o, ü=u, ä=a, ß=s ...) – Länge bleibt gleich */
 const NMAP={'ı':'i','ß':'s','ø':'o','đ':'d','ł':'l','æ':'a','œ':'o'};
@@ -442,8 +443,10 @@ async function pickWithHandle(){
   }};
   setStatus('Ordner wird gelesen …');await walk(h,[h.name]);setStatus('');qAdd(items);
 }
+const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const chooseFolder=async()=>{
   if(NATIVE)return nativeFolder();
+  if(IOS){toast('iPad/iPhone: Ordner bitte als ZIP wählen (Dateien-App: Ordner gedrückt halten > Komprimieren)');$('#upz').click();return}
   if(window.showDirectoryPicker){try{return await pickWithHandle()}catch(e){setStatus('');if(e&&e.name==='AbortError')return}}
   $('#upd').click();
 };
@@ -513,6 +516,7 @@ function qAdd(list){
 }
 $('#bO').onclick=()=>{queue=[];qBase=targetFolder();$('#qp').style.display='flex';qRender();chooseFolder()};
 $('#qz').onclick=()=>$('#upz').click();
+if(IOS){$('#qa').style.display='none';$('#bO').textContent='⬆ Ordner (ZIP)';$('#qh').textContent='iPad und iPhone erlauben Web-Apps keine Ordnerauswahl. Darum per ZIP: Ordner in der Dateien-App gedrückt halten, „Komprimieren“ wählen, dann hier „ZIP-Datei wählen“. Ordner, Unterordner und leere Ordner bleiben erhalten.'}
 $('#qa').onclick=chooseFolder;
 $('#qc').onclick=()=>{queue=[];qRender()};
 $('#qx').onclick=()=>{queue=[];$('#qp').style.display='none'};
@@ -968,7 +972,7 @@ try{if(localStorage.getItem('tools')==='1')$('#tools').classList.add('on')}catch
   const L=$('#left'),sp=$('#split');let dr=false;
   const set=w=>{L.style.width=Math.max(180,Math.min(innerWidth-120,w))+'px'};
   try{const w=+localStorage.getItem('lw');if(w)set(w)}catch(e){}
-  const sph=$('#sph'),mv=e=>{const r=sp.getBoundingClientRect();sph.style.top=Math.max(34,Math.min(r.height-34,e.clientY-r.top))+'px'};
+  const sph=$('#sph'),mv=e=>{const r=sp.getBoundingClientRect();sph.style.top=Math.max(20,Math.min(r.height-20,e.clientY-r.top))+'px'};
   sp.addEventListener('pointerdown',e=>{dr=true;sp.classList.add('dr');sp.setPointerCapture(e.pointerId);mv(e);e.preventDefault()});
   sp.addEventListener('pointermove',e=>{if(dr){set(e.clientX);mv(e)}});
   const end=()=>{if(!dr)return;dr=false;sp.classList.remove('dr');sph.style.top='';try{localStorage.setItem('lw',parseInt(L.style.width))}catch(e){}};

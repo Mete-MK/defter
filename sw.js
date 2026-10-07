@@ -1,4 +1,4 @@
-const V='defter-v13'; // bei Updates der App hochzählen (v2, v3 ...)
+const V='defter-v16'; // bei Updates der App hochzählen (v2, v3 ...)
 const LIBS=[
  "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
  "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
@@ -20,12 +20,20 @@ self.addEventListener('activate',e=>{e.waitUntil((async()=>{
 })())});
 self.addEventListener('fetch',e=>{
   const r=e.request;if(r.method!=='GET')return;
+  const u=new URL(r.url);
+  const isPage=r.mode==='navigate'||(u.origin===location.origin&&/\/(index\.html)?$/.test(u.pathname));
   e.respondWith((async()=>{
+    const c=await caches.open(V);
+    if(isPage){
+      // online: immer die neueste Version holen (max. 4 s warten), offline: gespeicherte Version
+      try{
+        const res=await Promise.race([fetch(r,{cache:'no-cache'}),new Promise((_,rej)=>setTimeout(rej,4000))]);
+        if(res&&res.ok){c.put('index.html',res.clone());return res}
+      }catch(x){}
+      const i=await c.match('index.html');if(i)return i;
+    }
     const m=await caches.match(r,{ignoreVary:true,ignoreSearch:r.mode==='navigate'});
     if(m)return m;
-    try{return await fetch(r)}catch(x){
-      if(r.mode==='navigate'){const i=await caches.match('index.html');if(i)return i}
-      return Response.error();
-    }
+    try{return await fetch(r)}catch(x){return Response.error()}
   })());
 });
