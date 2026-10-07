@@ -1,324 +1,1084 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Defter - Repertoire App</title>
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-  <meta name="theme-color" content="#121212" />
-
-  <!-- Externe Bibliotheken -->
-  <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-
-  <style>
-    /* DEINE ORIGINALEN STYLES BLEIBEN UNVERÄNDERT */
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #121212;
-      color: #e0e0e0;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-    header {
-      background-color: #1e1e1e;
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid #333;
-    }
-    h1 { font-size: 1.2rem; color: #fff; }
-    .controls { display: flex; gap: 8px; }
-    button, label.btn {
-      background-color: #2c2c2e;
-      color: #fff;
-      border: 1px solid #444;
-      padding: 8px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      display: inline-block;
-    }
-    button:active, label.btn:active { background-color: #3a3a3c; }
-    input[type="file"] { display: none; }
-
-    #main-container {
-      display: flex;
-      flex: 1;
-      height: calc(100vh - 57px);
-      overflow: hidden;
-    }
-    #sidebar {
-      width: 300px;
-      background-color: #181818;
-      border-right: 1px solid #2a2a2a;
-      display: flex;
-      flex-direction: column;
-    }
-    #search-box {
-      padding: 10px;
-      border-bottom: 1px solid #2a2a2a;
-    }
-    #search-input {
-      width: 100%;
-      padding: 8px;
-      border-radius: 4px;
-      border: 1px solid #333;
-      background: #222;
-      color: #fff;
-    }
-    #file-list {
-      list-style: none;
-      overflow-y: auto;
-      flex: 1;
-    }
-    #file-list li {
-      padding: 12px 16px;
-      border-bottom: 1px solid #222;
-      cursor: pointer;
-      font-size: 0.95rem;
-      word-break: break-word;
-    }
-    #file-list li:hover, #file-list li.active {
-      background-color: #2a2a2d;
-      color: #0a84ff;
-    }
-    #viewer {
-      flex: 1;
-      padding: 20px;
-      overflow-y: auto;
-      background-color: #121212;
-      color: #fff;
-      font-size: 1.2rem;
-      line-height: 1.6;
-    }
-    .text-content {
-      white-space: pre-wrap;
-      font-family: monospace;
-      font-size: 1.1rem;
-    }
-    .error-msg {
-      color: #ff453a;
-      background: rgba(255, 69, 58, 0.1);
-      padding: 12px;
-      border-radius: 6px;
-      border: 1px solid #ff453a;
-    }
-    .docx-wrapper { background: transparent !important; padding: 0 !important; }
-    .docx-wrapper > section.docx {
-      background: #1e1e1e !important;
-      color: #fff !important;
-      box-shadow: none !important;
-      margin-bottom: 20px !important;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Defter</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Defter">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#2563eb">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{--bg:#f6f6f4;--pane:#fff;--tx:#1d1d1b;--mut:#777;--bd:#dcdcd6;--ac:#2563eb;--sel:#dbe7ff;--hov:#eef0f3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181a;--pane:#222427;--tx:#eceae5;--mut:#9a9a94;--bd:#37393d;--ac:#6b9bff;--sel:#2b3b5c;--hov:#2c2e32}}
+:root[data-theme="dark"]{--bg:#17181a;--pane:#222427;--tx:#eceae5;--mut:#9a9a94;--bd:#37393d;--ac:#6b9bff;--sel:#2b3b5c;--hov:#2c2e32}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:15px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex}
+#left{flex:none;width:380px;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--bd);background:var(--pane)}
+#right{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
+.bar{display:flex;flex-wrap:wrap;gap:6px;padding:8px;border-bottom:1px solid var(--bd)}
+button,.btn{font:inherit;font-size:14px;padding:7px 11px;border:1px solid var(--bd);background:var(--pane);color:var(--tx);border-radius:8px;cursor:pointer}
+button:active,.btn:active{background:var(--hov)}
+button.pri{background:var(--ac);border-color:var(--ac);color:#fff}
+#tree{flex:1;overflow:auto;padding:6px 4px;-webkit-user-select:none;user-select:none}
+.row{display:flex;align-items:center;gap:4px;padding:6px 6px;border-radius:6px;cursor:pointer;white-space:nowrap}
+.row:hover{background:var(--hov)}
+.row.sel{background:var(--sel)}
+.tg{width:20px;height:20px;border:1px solid var(--bd);border-radius:4px;text-align:center;line-height:17px;font-size:14px;flex:none;color:var(--mut)}
+.tg.none{visibility:hidden}
+.nm{overflow:hidden;text-overflow:ellipsis}
+#path{font-size:12px;color:var(--mut);padding:6px 10px;border-top:1px solid var(--bd)}
+#head{position:relative;padding:10px 14px 10px 64px;border-bottom:1px solid var(--bd);font-weight:600;background:var(--pane);display:flex;align-items:center;gap:8px}
+#vs{flex:1;overflow:auto;padding:18px;background:var(--bg);touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
+#view{transform-origin:0 0;width:100%}
+.paper{background:var(--pane);max-width:820px;margin:0 auto;padding:28px 34px;border:1px solid var(--bd);border-radius:6px;min-height:200px;overflow-wrap:anywhere}
+.paper img{max-width:100%}
+.paper table{border-collapse:collapse}.paper td,.paper th{border:1px solid var(--bd);padding:4px 8px}
+pre{white-space:pre-wrap;margin:0;font:14px/1.55 ui-monospace,Menlo,Consolas,monospace}
+canvas{display:block;max-width:100%;margin:0 auto 12px;border:1px solid var(--bd);background:#fff}
+.docx-wrapper{background:transparent!important;padding:6px!important}
+.docx-wrapper>section.docx{box-shadow:0 1px 6px rgba(0,0,0,.25)!important;margin-bottom:14px!important}
+#qp{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
+#qb{background:var(--pane);border:1px solid var(--bd);border-radius:12px;padding:18px;width:min(460px,100%);max-height:85%;display:flex;flex-direction:column;gap:10px}
+#ql{overflow:auto;border:1px solid var(--bd);border-radius:8px;min-height:70px}
+#ql div{display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border-bottom:1px solid var(--bd)}
+#ql div:last-child{border-bottom:0}
+#tree.dz{outline:3px dashed var(--ac);outline-offset:-6px}
+#dlg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:10;padding:16px}
+#dbx{background:var(--pane);border:1px solid var(--bd);border-radius:12px;padding:18px;width:min(420px,100%);display:flex;flex-direction:column;gap:12px}
+#dt{white-space:pre-wrap;word-break:break-word}
+#di{font:inherit;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
+.cb{width:20px;height:20px;flex:none;cursor:pointer;accent-color:var(--ac)}
+.row.cur{box-shadow:inset 3px 0 0 var(--ac)}
+#logoL{padding:8px;border-bottom:1px solid var(--bd)}#logoL:empty{display:none}
+img.logo{object-fit:contain;max-width:100%;display:block}
+#sbx select,#lbx select{font:inherit;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);width:100%}
+#lpv{width:110px;height:80px;border:1px dashed var(--bd);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:12px;padding:4px;flex:none}
+#sv,#mv,#lg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:8;padding:16px}
+#sbx,#mbx,#lbx{background:var(--pane);border:1px solid var(--bd);border-radius:12px;padding:18px;width:min(460px,100%);max-height:92%;display:flex;flex-direction:column;gap:12px}
+#sbx input[type=text]{font:inherit;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);min-width:0}
+.lb{font-size:13px;color:var(--mut);margin-bottom:4px}
+#sf,#mf{border:1px solid var(--bd);border-radius:8px;max-height:38vh;overflow:auto;padding:4px}
+.row.dt{outline:2px dashed var(--ac);outline-offset:-2px}
+.row.off{opacity:.4;pointer-events:none}
+#q{margin:6px 8px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
+#cm{position:fixed;display:none;background:var(--pane);border:1px solid var(--bd);border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.3);z-index:11;padding:4px;min-width:200px}
+.cmi{padding:9px 12px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;gap:18px}
+.cmi:hover{background:var(--hov)}.cmi small{color:var(--mut)}
+.row.cutd{opacity:.45}
+#head.hc{display:grid;grid-template-columns:1fr auto 1fr}#head.hc #ttl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#qs{font-size:12px;color:var(--mut);padding:0 12px 4px}#qs:empty{display:none}
+mark{background:#ffe27a;color:#222;border-radius:3px;padding:0 1px}
+#eb{display:flex;gap:8px;justify-content:flex-end;padding:10px 14px;border-top:1px solid var(--bd);background:var(--pane)}
+#eb button{padding:10px 18px;font-size:15px}
+#split{flex:none;position:relative;z-index:4;width:26px;margin:0 -13px;cursor:col-resize;touch-action:none}
+#split::before{content:'';position:absolute;left:50%;top:0;bottom:0;width:3px;margin-left:-1.5px;background:var(--splc,#000)}
+#sph{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:28px;height:64px;border-radius:14px;background:var(--splc,#000);color:var(--bg);display:none;align-items:center;justify-content:center;font-size:12px;letter-spacing:-2px;pointer-events:none;white-space:nowrap}
+#split.dr #sph{display:flex;width:30px;height:30px;border-radius:50%;background:rgba(11,74,143,.85);color:#fff;font-size:10px;letter-spacing:-2px;box-shadow:0 1px 6px rgba(0,0,0,.35)}
+@media (hover:hover){#split:hover::before{background:#0b4a8f}}
+#split.dr::before{background:#0b4a8f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--splc:#e8e8e8}}
+:root[data-theme="dark"]{--splc:#e8e8e8}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+#top{display:flex;gap:6px;align-items:center;padding:6px 8px;border-bottom:1px solid var(--bd)}
+#top #q{flex:1;margin:0;min-width:0}
+#tt{min-width:44px;font-size:15px;padding:8px 12px;white-space:nowrap;background:#0b4a8f;border-color:#0b4a8f;color:#fff;font-weight:600}
+#tt:active{background:#083a73}
+#tools{display:none;border-bottom:1px solid var(--bd)}#tools.on{display:block}#tools .bar:last-child{border-bottom:0}
+#va{position:absolute;right:16px;bottom:16px;display:flex;gap:10px;z-index:5}
+#va button{width:48px;height:48px;border-radius:50%;font-size:20px;padding:0;box-shadow:0 2px 10px rgba(0,0,0,.35)}
+#mp{display:none;flex-direction:column;gap:4px;padding:6px 8px;border-top:1px solid var(--bd);background:var(--pane)}
+#mpt{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#mpc{display:flex;gap:6px;align-items:center}#mpc audio{flex:1;min-width:0;height:36px}#mpc button{padding:4px 8px}
+#qw{position:relative;flex:1;min-width:0;display:flex}
+#top #q{padding-right:40px;width:100%}
+#q::-webkit-search-cancel-button{-webkit-appearance:none;display:none}
+#qc2{display:none;position:absolute;right:4px;top:50%;transform:translateY(-50%);width:32px;height:32px;padding:0;border:0;border-radius:50%;background:var(--hov);color:var(--tx);font-size:15px;line-height:1}
+#qw.has #qc2{display:block}
+#lt{position:absolute;left:10px;top:50%;transform:translateY(-50%);min-width:44px;padding:7px 10px;font-size:15px}
+body.nol #left,body.nol #split{display:none}
+#zc{position:absolute;left:16px;bottom:16px;z-index:5;display:flex;gap:8px}
+#zc button{min-width:44px;height:44px;border-radius:22px;padding:0 12px;font-size:18px;box-shadow:0 2px 10px rgba(0,0,0,.35);opacity:.9}
+#sb{display:none;align-items:center;gap:4px;padding:5px 8px;border-bottom:1px solid var(--bd);background:var(--hov)}
+body.sel #sb{display:flex}
+#sbn{flex:1;font-size:13px;white-space:nowrap}
+#sb button{padding:5px 9px;font-size:15px}
+.cb{width:18px;height:18px}
+.row{-webkit-touch-callout:none}
+.empty{color:var(--mut);text-align:center;margin-top:20vh}
+#ed{outline:none;min-height:50vh}
+#tb{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--bd);background:var(--pane)}
+#tb input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);min-width:160px}
+#tb input[type=color]{width:38px;height:34px;padding:2px;border:1px solid var(--bd);border-radius:8px;background:var(--pane)}
+#toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:20px;font-size:14px;display:none;z-index:9}
+</style>
 </head>
 <body>
-
-  <header>
-    <h1>Defter Song Reader</h1>
-    <div class="controls">
-      <label class="btn" for="file-input">Dateien importieren</label>
-      <!-- Erweitere accept-Liste um alle Endungen & MIME-Types damit nichts ausgegraut wird -->
-      <input type="file" id="file-input" multiple accept="*/*,.txt,.rtf,.doc,.docx,.html,.htm,.pdf" />
-      <button id="btn-new-song">+ Neuer Song</button>
-    </div>
-  </header>
-
-  <div id="main-container">
-    <div id="sidebar">
-      <div id="search-box">
-        <input type="text" id="search-input" placeholder="Song suchen..." />
-      </div>
-      <ul id="file-list"></ul>
-    </div>
-    <div id="viewer">
-      <p style="color: #666;">Wähle einen Song aus der Liste aus.</p>
-    </div>
+<div id="left">
+  <div id="logoL"></div>
+  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><span id="qw"><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"><button id="qc2" title="Suche schließen" aria-label="Suche schließen">✕</button></span></div>
+  <div id="qs"></div>
+  <div id="tools">
+  <div class="bar">
+    <button id="bF">＋ Ordner</button>
+    <label class="btn">⬆ Dateien<input id="up" type="file" accept=".docx,.pdf,.txt,.mp3,.m4a,.wav,.ogg,.zip" multiple hidden></label>
+    <button id="bO">⬆ Ordner</button><input id="upd" type="file" webkitdirectory multiple hidden><input id="upz" type="file" accept=".zip,application/zip" multiple hidden>
+    <button id="bN">📝 Neues Dokument</button>
+    <button id="bL">🖼 Logo</button>
   </div>
+  <div class="bar">
+    <button id="bCp">⧉ Kopieren</button>
+    <button id="bCt">✂ Ausschneiden</button>
+    <button id="bPs">📋 Einfügen</button>
+    <button id="bV">↪ Verschieben</button>
+    <button id="bR">✎ Umbenennen</button>
+    <button id="bX">⬇ Herunterladen</button>
+    <button id="bM">☑ Alle markieren</button>
+    <button id="bD">🗑 Löschen</button>
+  </div>
+</div>
+  <div id="sb"><span id="sbn">0 ausgewählt</span><button id="sba" title="Alle auswählen">Alle</button><button id="sbc" title="Kopieren">⧉</button><button id="sbx" title="Ausschneiden">✂</button><button id="sbv" title="Verschieben">↪</button><button id="sbd" title="Löschen">🗑</button><button id="sbe" title="Auswahl beenden">✕</button></div>
+  <div id="tree"></div>
+  <div id="mp"><div id="mpt"></div><div id="mpc"><button id="mpp" title="Zurück">⏮</button><audio id="au" controls preload="metadata"></audio><button id="mpn" title="Weiter">⏭</button><button id="mpx" title="Schließen">✕</button></div></div>
+  <div id="path"></div>
+</div>
+<div id="split" title="Ziehen zum Verändern der Breite, Doppelklick = zurücksetzen"><div id="sph">◀▶</div></div>
+<div id="right">
+  <div id="head"><button id="lt" title="Ordnerbaum ausblenden">◀</button><span id="ttl">Keine Datei geöffnet</span></div>
+  <div id="zc"><button id="zm" title="Verkleinern">−</button><button id="zr" title="Zoom zurücksetzen">100 %</button><button id="zp" title="Vergrößern">+</button></div>
+  <div id="vs"><div id="view"><div class="empty"><div id="lc" style="margin-bottom:18px"></div>Datei links auswählen, um sie hier anzuzeigen.</div></div></div>
+</div>
+<div id="qp"><div id="qb">
+  <b>Mehrere Ordner hochladen</b>
+  <div id="qt" style="font-size:13px;color:var(--mut)"></div>
+  <div id="ql"></div>
+  <div id="qh" style="font-size:12px;color:var(--mut)">Lässt dein Gerät keine Ordnerauswahl zu, geht es auch per ZIP: Ordner in der Dateien-App gedrückt halten, „Komprimieren“ wählen und hier die ZIP-Datei auswählen.</div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button id="qz" class="pri">📦 ZIP-Datei wählen</button>
+    <button id="qa">＋ Ordner wählen</button>
+    <button id="qc">Leeren</button>
+  </div>
+  <div style="display:flex;gap:6px;justify-content:flex-end">
+    <button id="qx">Abbrechen</button>
+    <button class="pri" id="qg">Hochladen</button>
+  </div>
+</div></div>
+<div id="dlg"><div id="dbx"><div id="dt"></div><input id="di" type="text"><div style="display:flex;gap:8px;justify-content:flex-end"><button id="dno"></button><button class="pri" id="dok"></button></div></div></div>
+<div id="sv"><div id="sbx">
+  <b>Dokument speichern</b>
+  <div><div class="lb">Dateiname</div><div style="display:flex;gap:6px;align-items:center"><input id="sn" type="text" placeholder="z. B. Protokoll" style="flex:1"><select id="sfm"><option value="docx">.docx (Word)</option><option value="pdf">.pdf</option><option value="txt">.txt (Text)</option></select></div></div>
+  <div><div class="lb">Speicherort wählen</div><div id="sf"></div></div>
+  <div id="sp" style="font-size:13px;color:var(--mut)"></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:space-between">
+    <button id="snf">＋ Neuer Ordner hier</button>
+    <span style="display:flex;gap:6px"><button id="sno">Abbrechen</button><button class="pri" id="sok">Speichern</button></span>
+  </div>
+</div></div>
+<div id="mv"><div id="mbx">
+  <b id="mt">Verschieben nach …</b>
+  <div id="mf"></div>
+  <div id="mp" style="font-size:13px;color:var(--mut)"></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:space-between">
+    <button id="mnf">＋ Neuer Ordner hier</button>
+    <span style="display:flex;gap:6px"><button id="mno">Abbrechen</button><button class="pri" id="mok">Verschieben</button></span>
+  </div>
+</div></div>
+<div id="lg"><div id="lbx">
+  <b>Logo</b>
+  <div style="display:flex;gap:12px;align-items:center"><div id="lpv"></div><label class="btn">Bild wählen<input id="lf" type="file" accept="image/*" hidden></label></div>
+  <div><div class="lb">Position</div><select id="lpos"><option value="left">Linke Seite, oben mittig über dem Ordnerbaum</option><option value="head-left">Rechte Seite, Kopfzeile links</option><option value="head-center">Rechte Seite, Kopfzeile mittig</option><option value="head-right">Rechte Seite, Kopfzeile rechts</option><option value="center">Mitte der rechten Seite (wenn keine Datei geöffnet ist)</option></select></div>
+  <div><div class="lb">Größe: <span id="lsv"></span> px Höhe</div><input type="range" id="lsz" min="24" max="160" step="4" style="width:100%"></div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:space-between"><button id="lrm">Logo entfernen</button><span style="display:flex;gap:6px"><button id="lno">Abbrechen</button><button class="pri" id="lok">Speichern</button></span></div>
+</div></div>
+<div id="cm"></div>
+<div id="toast"></div>
 
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').catch(err => console.log('SW reg error:', err));
-    }
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const marked=new Set();let multi=false,dragIds=null,lpAt=0;
+function ask(title,o={}){return new Promise(res=>{const d=$('#dlg'),i=$('#di');$('#dt').textContent=title;i.style.display=o.input?'block':'none';i.value=o.def||'';$('#dok').textContent=o.ok||'OK';$('#dno').textContent=o.cancel||'Abbrechen';d.style.display='flex';setTimeout(()=>o.input?(i.focus(),i.select()):$('#dok').focus(),60);
+const end=v=>{d.style.display='none';res(v)};
+$('#dok').onclick=()=>end(o.input?(i.value.trim()||null):true);$('#dno').onclick=()=>end(o.input?null:false);i.onkeydown=e=>{if(e.key==='Enter')$('#dok').click()}})}
+let nodes=[],open=new Set(['root']),selId='root',openFileId=null,db=null,seq=0;
+const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',2600)};
 
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+/* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
+const mem=new Map(),indexed=new Set(),sig=new Map();
+let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
+const APPV='Version 17';
+const setStatus=m=>{$('#qs').textContent=m};
+/* Suche: Groß/Klein und Sonderzeichen gleichsetzen (ç=c, ğ=g, ş=s, ı/İ=i, ö=o, ü=u, ä=a, ß=s ...) – Länge bleibt gleich */
+const NMAP={'ı':'i','ß':'s','ø':'o','đ':'d','ł':'l','æ':'a','œ':'o'};
+const flat=s=>s.replace(/[^\u0000-\u007f]/gu,c=>NMAP[c]||Array.from(c.normalize('NFD'))[0]).toLowerCase();
+/* zusätzlich deutsche Ersatzschreibweisen: ue=ü=u, oe=ö=o, ae=ä=a, ss=ß=s */
+const norm=s=>flat(s).replace(/ue|oe|ae|ss/g,m=>m[0]);
+function normMap(t){
+  const a=flat(t),m=[],sp=[];let n='';
+  for(let i=0;i<a.length;){const d=a.substr(i,2),two=d==='ue'||d==='oe'||d==='ae'||d==='ss';n+=a[i];m.push(i);sp.push(two?2:1);i+=two?2:1}
+  return{n,m,sp};
+}
+function openDB(){return new Promise(res=>{try{const r=indexedDB.open('dateiablage',2);
+  r.onupgradeneeded=()=>{for(const k of['n','b','t'])if(!r.result.objectStoreNames.contains(k))r.result.createObjectStore(k,{keyPath:'id'})};
+  r.onsuccess=()=>{db=r.result;res()};r.onerror=()=>res()}catch(e){res()}})}
+function done(t,res){t.oncomplete=()=>res();t.onerror=()=>res();t.onabort=()=>{toast('Speichern fehlgeschlagen – ist der Speicher voll?');res()}}
+function put(n){
+  if(n.id==='__logo'){return new Promise(res=>{if(!db)return res();try{const t=db.transaction('n','readwrite');t.objectStore('n').put(n);done(t,res)}catch(e){res()}})}
+  const blob=n.blob;delete n.blob;delete n.txt;
+  if(!kmD){const s0=sig.get(n.id);if(s0===undefined)kmAdd(n);else if(s0!==n.parent+'\0'+n.name)kmD=true}
+  if(!db){if(blob)mem.set(n.id,blob);return Promise.resolve()}
+  return new Promise(res=>{try{const t=db.transaction(blob?['n','b']:['n'],'readwrite');t.objectStore('n').put(n);if(blob)t.objectStore('b').put({id:n.id,blob});done(t,res)}catch(e){res()}});
+}
+function del(id){
+  kmD=true;indexed.delete(id);mem.delete(id);
+  if(!db)return Promise.resolve();
+  return new Promise(res=>{try{const t=db.transaction(['n','b','t'],'readwrite');['n','b','t'].forEach(k=>t.objectStore(k).delete(id));done(t,res)}catch(e){res()}});
+}
+function blobOf(id){
+  if(mem.has(id))return Promise.resolve(mem.get(id));
+  return new Promise(res=>{if(!db)return res(null);try{const q=db.transaction('b').objectStore('b').get(id);q.onsuccess=()=>res(q.result?q.result.blob:null);q.onerror=()=>res(null)}catch(e){res(null)}});
+}
+function putText(id,txt){indexed.add(id);if(db)try{db.transaction('t','readwrite').objectStore('t').put({id,txt,nt:norm(txt),nv:2})}catch(e){}}
+function unindex(id){indexed.delete(id);if(db)try{db.transaction('t','readwrite').objectStore('t').delete(id)}catch(e){}}
+function loadAll(){return new Promise(res=>{if(!db)return res([]);try{const q=db.transaction('n').objectStore('n').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])}catch(e){res([])}})}
+function loadKeys(){return new Promise(res=>{if(!db)return res();try{const q=db.transaction('t').objectStore('t').getAllKeys();q.onsuccess=()=>{(q.result||[]).forEach(k=>indexed.add(k));res()};q.onerror=()=>res()}catch(e){res()}})}
+const uid=()=>Date.now().toString(36)+(seq++)+Math.random().toString(36).slice(2,5);
+const coll=new Intl.Collator('de',{numeric:true});
+const cmp=(a,b)=>(a.type===b.type?0:a.type==='folder'?-1:1)||coll.compare(a.name,b.name);
+function km(){if(!kmD)return;KM=new Map();IM=new Map();sig.clear();
+  for(const n of nodes){IM.set(n.id,n);sig.set(n.id,n.parent+'\0'+n.name);let a=KM.get(n.parent);if(!a)KM.set(n.parent,a=[]);a.push(n)}
+  for(const a of KM.values())a.sort(cmp);kmD=false}
+function kmAdd(n){IM.set(n.id,n);let a=KM.get(n.parent);if(!a)KM.set(n.parent,a=[]);let lo=0,hi=a.length;while(lo<hi){const m=(lo+hi)>>1;if(cmp(a[m],n)<=0)lo=m+1;else hi=m}a.splice(lo,0,n);sig.set(n.id,n.parent+'\0'+n.name)}
+const kids=p=>{km();return KM.get(p)||[]};
+const byId=id=>{km();return IM.get(id)};
+async function usage(){try{const e=await navigator.storage.estimate();usageTxt=' · belegt: '+(e.usage>=1073741824?(e.usage/1073741824).toFixed(2)+' GB':Math.round(e.usage/1048576)+' MB');render()}catch(x){}}
+/* ---------- Baum ---------- */
+/* Haken setzen/entfernen: gilt für alle Einträge darunter; Ordner darüber folgen automatisch */
+function setMark(id,on){
+  const col=i=>{on?marked.add(i):marked.delete(i);kids(i).forEach(x=>col(x.id))};
+  col(id);
+  let a=byId(byId(id)&&byId(id).parent);
+  while(a&&a.id!=='root'){
+    const all=kids(a.id).every(k=>marked.has(k.id));
+    if(on&&all)marked.add(a.id);else marked.delete(a.id);
+    a=byId(a.parent);
+  }
+}
+const topOf=a=>a.filter(i=>!a.some(o=>o!==i&&isDesc(i,o)));
+function render(){
+  const t=$('#tree'),st=t.scrollTop,qv=norm(($('#q').value||'').trim());t.innerHTML='';$('#qw').classList.toggle('has',!!qv);
+  const walk=(pid,d)=>kids(pid).forEach(n=>{
+    const r=document.createElement('div');r.className='row'+((marked.has(n.id)||(!marked.size&&n.id===selId))?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'')+(cutd(n.id)?' cutd':'');
+    r.style.paddingLeft=(6+d*18)+'px';
+    const isF=n.type==='folder',has=isF&&kids(n.id).length>0;
+    const tg=document.createElement('span');tg.className='tg'+(has?'':' none');tg.textContent=open.has(n.id)?'−':'+';
+    tg.onclick=e=>{e.stopPropagation();open.has(n.id)?open.delete(n.id):open.add(n.id);render()};
+    const ic=document.createElement('span');ic.textContent=isF?(open.has(n.id)?'📂':'📁'):n.ext==='pdf'?'📕':n.ext==='docx'?'📘':(AUDIO.includes(n.ext)?'🎵':'📄');
+    const nm=document.createElement('span');nm.className='nm';nm.textContent=n.name;
+    if(multi){const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};r.append(cb)}
+    r.append(tg,ic,nm);
+    {let lt=null,lx=0,ly=0;const lc=()=>{clearTimeout(lt);lt=null};
+      r.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;lx=e.clientX;ly=e.clientY;lc();lt=setTimeout(()=>{lt=null;lpAt=Date.now();if(!multi)toast('Auswahlmodus: Einträge antippen, ✕ beendet ihn');multi=true;setMark(n.id,true);render()},420)});
+      r.addEventListener('pointermove',e=>{if(lt&&Math.hypot(e.clientX-lx,e.clientY-ly)>10)lc()});
+      ['pointerup','pointercancel','pointerleave'].forEach(t=>r.addEventListener(t,lc))}
+    r.onclick=e=>{
+      if(Date.now()-lpAt<700)return;
+      if(multi||e.ctrlKey||e.metaKey){multi=true;setMark(n.id,!marked.has(n.id));render();return}
+      selId=n.id;
+      if(isF){
+        if(e.shiftKey||open.has(n.id)){open.has(n.id)?open.delete(n.id):open.add(n.id)}
+        else{const keep=new Set(['root']);let x=n;while(x){keep.add(x.id);x=byId(x.parent)}open.clear();keep.forEach(k=>open.add(k))}
+        render()}else{openFile(n)}
+    };
+    r.draggable=true;r.dataset.id=n.id;
+    r.addEventListener('dragstart',e=>{dragIds=marked.has(n.id)?[...marked]:[n.id];try{e.dataTransfer.setData('text/plain',n.name);e.dataTransfer.effectAllowed='move'}catch(x){}});
+    r.addEventListener('dragend',()=>{dragIds=null;document.querySelectorAll('.dt').forEach(x=>x.classList.remove('dt'))});
+    dropTarget(r,isF?n.id:n.parent);
+    t.appendChild(r);
+    if(isF&&open.has(n.id))walk(n.id,d+1);
+  });
+  const root=document.createElement('div');root.className='row'+(selId==='root'&&!marked.size?' sel':'');
+  root.innerHTML='<span class="tg" style="visibility:hidden">+</span><span>🗂</span><span class="nm"><b>Defter</b></span>';
+  root.onclick=()=>{selId='root';render()};dropTarget(root,'root');t.appendChild(root);
+  if(qv)searchList(t,qv);else walk('root',1);
+  $('#bD').textContent=marked.size?'🗑 Löschen ('+marked.size+')':'🗑 Löschen';updTT();
+  $('#bM').textContent=multi?'✕ Auswahl beenden':'☑ Auswählen';document.body.classList.toggle('sel',multi);$('#sbn').textContent=marked.size+' ausgewählt';
+  $('#bPs').textContent=clip.ids.length?'📋 Einfügen ('+clip.ids.length+')':'📋 Einfügen';
+  t.scrollTop=st;
+  const s=byId(selId);let p=[],c=s;while(c&&c.id!=='root'){p.unshift(c.name);c=byId(c.parent)}
+  $('#path').textContent=marked.size?marked.size+' Eintrag/Einträge markiert – Löschen, Verschieben und Umbenennen beziehen sich darauf':(s?'Ausgewählt: /'+p.join('/'):'Nichts ausgewählt')+usageTxt+' · '+APPV;
+}
+function targetFolder(){const s=byId(selId);if(!s)return 'root';return s.type==='folder'?s.id:s.parent}
 
-    const songsMap = new Map();
-    const fileInput = document.getElementById('file-input');
-    const fileListEl = document.getElementById('file-list');
-    const viewerEl = document.getElementById('viewer');
-    const searchInput = document.getElementById('search-input');
+$('#bF').onclick=async()=>{
+  const name=await ask('Name des neuen Ordners:',{input:true,ok:'Anlegen'});if(!name)return;
+  const n={id:uid(),parent:targetFolder(),type:'folder',name};nodes.push(n);put(n);open.add(n.parent);selId=n.id;render();
+};
+function releaseSel(){marked.clear();selId=null;multi=false;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}
+$('#bM').onclick=()=>{if(multi)releaseSel();else{multi=true;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}};
+$('#sba').onclick=()=>{nodes.forEach(n=>marked.add(n.id));render()};
+$('#sbe').onclick=releaseSel;
+$('#sbd').onclick=()=>$('#bD').click();$('#sbc').onclick=()=>$('#bCp').click();$('#sbx').onclick=()=>$('#bCt').click();$('#sbv').onclick=()=>$('#bV').click();
+$('#tree').addEventListener('click',e=>{if(e.target===e.currentTarget&&Date.now()-lpAt>700)releaseSel()});
+$('#bD').onclick=async()=>{
+  const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
+  if(!tg.length)return toast('Bitte zuerst einen Eintrag markieren (mehrere: Kästchen anhaken).');
+  const ids=new Set();const col=i=>{ids.add(i);kids(i).forEach(x=>col(x.id))};tg.forEach(col);
+  const all=[...ids].map(byId).filter(Boolean),fi=all.filter(x=>x.type==='file').length,fo=all.length-fi;
+  const names=tg.map(i=>byId(i)).filter(Boolean).map(x=>(x.type==='folder'?'📁 ':'📄 ')+x.name);
+  const shown=names.slice(0,6).join('\n')+(names.length>6?'\n… und '+(names.length-6)+' weitere':'');
+  const ok=await ask('Wirklich löschen?\n\n'+shown+'\n\nInsgesamt: '+fo+' Ordner, '+fi+' Datei(en). Das kann nicht rückgängig gemacht werden.',{ok:'Löschen',cancel:'Abbrechen'});
+  if(!ok)return;
+  nodes=nodes.filter(x=>!ids.has(x.id));ids.forEach(del);
+  if(ids.has(openFileId)){openFileId=null;$('#tb')?.remove();clearView()}
+  if(ids.has(selId))selId='root';
+  marked.clear();render();toast('Gelöscht: '+fo+' Ordner, '+fi+' Datei(en)');
+};
+/* ---------- Verschieben ---------- */
+const isDesc=(id,anc)=>{let x=byId(id);while(x){if(x.id===anc)return true;x=byId(x.parent)}return false};
+function dropTarget(el,dest){
+  el.addEventListener('dragover',e=>{if(!dragIds)return;e.preventDefault();e.stopPropagation();el.classList.add('dt')});
+  el.addEventListener('dragleave',()=>el.classList.remove('dt'));
+  el.addEventListener('drop',e=>{if(!dragIds)return;e.preventDefault();e.stopPropagation();el.classList.remove('dt');const ids=dragIds;dragIds=null;moveItems(ids,dest)});
+}
+async function moveItems(ids,dest){
+  ids=[...new Set(ids)].filter(i=>byId(i));
+  ids=ids.filter(i=>!ids.some(o=>o!==i&&isDesc(i,o)));
+  const bad=ids.filter(i=>isDesc(dest,i));
+  ids=ids.filter(i=>!bad.includes(i)&&byId(i).parent!==dest);
+  if(!ids.length)return toast(bad.length?'Ein Ordner kann nicht in sich selbst verschoben werden.':'Nichts zu verschieben – die Einträge liegen schon dort.');
+  const clash=i=>{const n=byId(i);return nodes.find(x=>x.parent===dest&&x.name===n.name&&x.type===n.type&&x.id!==n.id)};
+  const fc=ids.filter(i=>clash(i)&&byId(i).type==='folder'),dc=ids.filter(i=>clash(i)&&byId(i).type==='file');
+  let rp=true;
+  if(dc.length)rp=await ask(dc.length===1?`Im Zielordner gibt es „${byId(dc[0]).name}“ schon.\n\nÜberschreiben?`:`${dc.length} Dateien gibt es im Zielordner schon.\n\nAlle überschreiben oder diese überspringen?`,{ok:'Überschreiben',cancel:'Überspringen'});
+  let moved=0,skipped=fc.length;
+  for(const id of ids){
+    const n=byId(id);if(!n||fc.includes(id))continue;
+    const ex=clash(id);
+    if(ex){if(!rp){skipped++;continue}nodes=nodes.filter(x=>x.id!==ex.id);del(ex.id);if(openFileId===ex.id){openFileId=null;clearView()}}
+    n.parent=dest;put(n);moved++;
+  }
+  open.add(dest);marked.clear();render();
+  toast(moved+' verschoben'+(skipped?', '+skipped+' übersprungen (gleichnamiger Ordner/Datei vorhanden)':''));
+}
+function pickFolder(targets){
+  return new Promise(res=>{
+    let f=null;
+    const draw=()=>{
+      const box=$('#mf');box.innerHTML='';
+      const add=(id,label,d)=>{const r=document.createElement('div');const off=id!=='root'&&targets.some(t=>isDesc(id,t));r.className='row'+(id===f?' sel':'')+(off?' off':'');r.style.paddingLeft=(8+d*18)+'px';r.textContent=(id==='root'?'🗂 ':'📁 ')+label;r.onclick=()=>{f=id;draw()};box.appendChild(r)};
+      add('root','Defter (oberste Ebene)',0);
+      const walk=(pid,d)=>kids(pid).filter(n=>n.type==='folder').forEach(n=>{add(n.id,n.name,d);walk(n.id,d+1)});
+      walk('root',1);
+      $('#mp').textContent=f===null?'Bitte Zielordner antippen.':'Ziel: '+(f==='root'?'/ (oberste Ebene)':fpath(f));
+    };
+    const close=v=>{$('#mv').style.display='none';res(v)};
+    $('#mt').textContent=targets.length===1?'„'+byId(targets[0]).name+'“ verschieben nach …':targets.length+' Einträge verschieben nach …';
+    $('#mnf').onclick=async()=>{if(f===null)return toast('Erst den übergeordneten Ordner antippen.');const n=await ask('Name des neuen Ordners:',{input:true,ok:'Anlegen'});if(!n)return;const o={id:uid(),parent:f,type:'folder',name:n};nodes.push(o);put(o);open.add(f);f=o.id;render();draw()};
+    $('#mno').onclick=()=>close(null);
+    $('#mok').onclick=()=>{if(f===null)return toast('Bitte zuerst einen Zielordner wählen.');close(f)};
+    draw();$('#mv').style.display='flex';
+  });
+}
+$('#bV').onclick=async()=>{
+  const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
+  if(!tg.length)return toast('Bitte zuerst Ordner oder Dateien markieren (mehrere: Kästchen anhaken).');
+  const dest=await pickFolder(tg);if(dest===null)return;
+  await moveItems(tg,dest);
+};
 
-    fileInput.addEventListener('change', handleFilesSelect);
-    searchInput.addEventListener('input', renderFileList);
+/* ---------- Tastatur: Enter bestätigt, Esc bricht ab, Entf löscht ---------- */
+document.addEventListener('keydown',e=>{
+  const vis=id=>$(id).style.display==='flex',t=e.target,tn=t.tagName;
+  if(e.key==='Escape'){let any=false;for(const[o,c]of[['#dlg','#dno'],['#lg','#lno'],['#mv','#mno'],['#sv','#sno'],['#qp','#qx']])if(vis(o)){$(c).click();e.preventDefault();any=true;break}
+    if(!any&&(marked.size||multi)&&!['INPUT','TEXTAREA'].includes(tn)&&!t.isContentEditable)releaseSel()}
+  else if(e.key==='Enter'){
+    if(tn==='BUTTON'||tn==='INPUT'||tn==='TEXTAREA')return;
+    if(vis('#dlg'))$('#dok').click();else if(vis('#mv'))$('#mok').click();else if(vis('#sv'))$('#sok').click();
+  }
+  else if((e.ctrlKey||e.metaKey)&&['c','x','v','a'].includes(e.key.toLowerCase())){
+    if(['INPUT','TEXTAREA'].includes(tn)||t.isContentEditable||['#dlg','#mv','#sv','#qp','#lg'].some(vis))return;
+    if(e.key.toLowerCase()==='c'&&window.getSelection&&String(getSelection()))return;
+    e.preventDefault();
+    ({c:()=>$('#bCp').click(),x:()=>$('#bCt').click(),v:()=>$('#bPs').click(),a:()=>{multi=true;nodes.forEach(n=>marked.add(n.id));render()}})[e.key.toLowerCase()]();
+  }
+  else if(e.key==='F2'){
+    if(['INPUT','TEXTAREA'].includes(tn)||t.isContentEditable||['#dlg','#mv','#sv','#qp','#lg'].some(vis))return;
+    e.preventDefault();$('#bR').click();
+  }
+  else if(e.key==='Delete'){
+    if(['INPUT','TEXTAREA'].includes(tn)||t.isContentEditable||['#dlg','#mv','#sv','#qp','#lg'].some(vis))return;
+    $('#bD').click();
+  }
+});
 
-    function handleFilesSelect(e) {
-      const files = e.target.files;
-      for (let file of files) {
-        const id = file.name + '_' + file.size + '_' + file.lastModified;
-        const ext = file.name.split('.').pop().toLowerCase();
-        songsMap.set(id, { id, name: file.name, file, ext });
+const MOBILE=!!window.Capacitor||/Android|iPhone|iPad/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const AUDIO=['mp3','m4a','wav','ogg'],OKX=['docx','pdf','txt',...AUDIO];
+const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+const fcall=(m,o)=>{const P=Capacitor.Plugins&&Capacitor.Plugins.FolderPicker;return P&&P[m]?P[m](o||{}):Capacitor.nativePromise('FolderPicker',m,o||{})};
+async function nativeFolder(){
+  try{
+    setStatus('Ordner wird gelesen …');const r=await fcall('pick');
+    const items=(r.entries||[]).map(e=>{const parts=e.path.split('/');if(e.dir)return{folder:true,dirs:parts};parts.pop();
+      return{f:{name:e.name,type:''},dirs:parts,get:async()=>{const x=await fcall('read',{uri:e.uri});const bin=atob(x.data),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u])}}});
+    setStatus('');
+    if(!items.length)return toast('Keine DOCX-, PDF- oder TXT-Dateien im Ordner gefunden.');
+    qAdd(items);
+  }catch(e){setStatus('');if(!/abgebrochen/.test(String((e&&e.message)||e)))toast('Ordner konnte nicht gelesen werden. Wurde setup-android ausgeführt?')}
+}
+async function pickWithHandle(){
+  const h=await window.showDirectoryPicker({mode:'read'}),items=[{folder:true,dirs:[h.name]}];
+  const walk=async(dir,path)=>{for await(const [name,hd] of dir.entries()){
+    if(name.startsWith('.'))continue;
+    if(hd.kind==='directory'){items.push({folder:true,dirs:[...path,name]});await walk(hd,[...path,name])}
+    else if(OKX.includes(name.split('.').pop().toLowerCase()))items.push({f:{name,type:''},dirs:path,get:()=>hd.getFile()});
+  }};
+  setStatus('Ordner wird gelesen …');await walk(h,[h.name]);setStatus('');qAdd(items);
+}
+const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const chooseFolder=async()=>{
+  if(NATIVE)return nativeFolder();
+  if(IOS){toast('iPad/iPhone: Ordner bitte als ZIP wählen (Dateien-App: Ordner gedrückt halten > Komprimieren)');$('#upz').click();return}
+  if(window.showDirectoryPicker){try{return await pickWithHandle()}catch(e){setStatus('');if(e&&e.name==='AbortError')return}}
+  $('#upd').click();
+};
+const getBl=it=>it.get?it.get():it.f;
+async function zipItems(file){
+  const z=await JSZip.loadAsync(file),out=[];
+  z.forEach((path,en)=>{
+    if(en.dir){const dp=path.split(/[\\/]/).filter(Boolean);if(dp.length&&!dp.some(q=>q==='__MACOSX'||q.startsWith('.')))out.push({folder:true,dirs:dp});return}
+    const parts=path.split(/[\\/]/).filter(Boolean),name=parts.pop();
+    if(!name||name.startsWith('.')||parts.some(q=>q==='__MACOSX'||q.startsWith('.')))return;
+    if(!OKX.includes(name.split('.').pop().toLowerCase()))return;
+    out.push({f:{name,type:''},dirs:parts,get:()=>en.async('blob')});
+  });
+  return out;
+}
+async function expand(files){
+  const items=[];
+  for(const f of files){
+    if(/\.zip$/i.test(f.name)){
+      try{setStatus('ZIP wird gelesen: '+f.name+' …');items.push(...await zipItems(f))}
+      catch(e){toast('ZIP konnte nicht gelesen werden: '+f.name)}
+      setStatus('');
+    }else items.push({f,dirs:[]});
+  }
+  return items;
+}
+async function ingest(items,base){
+  const folders=items.filter(it=>it.folder),ok=items.filter(it=>!it.folder&&OKX.includes((it.f.name.split('.').pop()||'').toLowerCase()));
+  const skipped=items.length-ok.length-folders.length;
+  let fc=0;
+  const find=(p,d)=>kids(p).find(n=>n.type==='folder'&&n.name===d);
+  const resolve=(dirs,create)=>{let p=base;for(const d of dirs){let c=find(p,d);if(!c){if(!create)return null;c={id:uid(),parent:p,type:'folder',name:d};nodes.push(c);put(c);fc++}p=c.id}return p};
+  const exist=(p,name)=>kids(p).find(n=>n.type==='file'&&n.name===name);
+  folders.forEach(it=>resolve(it.dirs,true));
+  const conf=ok.filter(it=>{const p=resolve(it.dirs,false);return p&&exist(p,it.f.name)});
+  let over=true;
+  if(conf.length===1)over=await ask(`Die Datei „${conf[0].f.name}“ gibt es in diesem Ordner schon.\n\nÜberschreiben?`,{ok:'Überschreiben'});
+  else if(conf.length>1)over=await ask(`${conf.length} Dateien gibt es schon (z. B. „${conf[0].f.name}“).\n\nAlle überschreiben oder diese Dateien überspringen?`,{ok:'Alle überschreiben',cancel:'Überspringen'});
+  let added=0,replaced=0,k=0;
+  for(const it of ok){
+    if(++k%5===1)setStatus('Hochladen … '+k+' von '+ok.length);
+    const p=resolve(it.dirs,true),ex=exist(p,it.f.name),ext=it.f.name.split('.').pop().toLowerCase();
+    if(ex){if(!over)continue;ex.blob=await getBl(it);ex.mime=it.f.type;delete ex.html;unindex(ex.id);await put(ex);replaced++;if(openFileId===ex.id)openFile(ex)}
+    else{const n={id:uid(),parent:p,type:'file',name:it.f.name,ext:ext.toLowerCase(),blob:await getBl(it),mime:it.f.type};nodes.push(n);await put(n);added++}
+  }
+  open.add(base);setStatus('');render();usage();indexMissing();
+  const m=[];if(fc)m.push(fc+' Ordner');if(added)m.push(added+' neu');if(replaced)m.push(replaced+' überschrieben');if(skipped)m.push(skipped+' nicht unterstützt');
+  toast(m.length?m.join(', '):'Nichts hochgeladen');
+}
+$('#up').onchange=async e=>{const fl=[...e.target.files];e.target.value='';const l=await expand(fl);await ingest(l,targetFolder())};
+$('#upz').onchange=async e=>{const fl=[...e.target.files];e.target.value='';qAdd(await expand(fl))};
+/* Mehrere Ordner sammeln, dann gemeinsam hochladen */
+let queue=[],qBase='root';
+function qRender(){
+  const g={};queue.forEach(it=>{const k=it.dirs[0]||'(einzelne Dateien)';g[k]=(g[k]||0)+(it.folder?0:1)});
+  $('#ql').innerHTML=Object.keys(g).length?'':'<div style="color:var(--mut)">Noch kein Ordner gewählt.</div>';
+  Object.entries(g).forEach(([k,c])=>{const d=document.createElement('div');d.innerHTML='<span>📁 </span><span style="color:var(--mut)">'+c+' Datei(en)</span>';d.firstChild.append(k);$('#ql').appendChild(d)});
+  const b=byId(qBase);let p=[],x=b;while(x&&x.id!=='root'){p.unshift(x.name);x=byId(x.parent)}
+  $('#qt').textContent='Ziel: /'+p.join('/')+' · '+Object.keys(g).length+' Ordner, '+queue.filter(i=>!i.folder).length+' Datei(en)';
+  $('#qg').textContent='Alle hochladen'+(queue.length?' ('+queue.filter(i=>!i.folder).length+' Dateien)':'');
+}
+function qAdd(list){
+  const key=it=>it.dirs.join('/')+'/'+(it.folder?'':it.f.name)+(it.folder?'/':'');
+  const seen=new Set(queue.map(key));
+  list.forEach(it=>{const k=key(it);if(!seen.has(k)){seen.add(k);queue.push(it)}});
+  $('#qp').style.display='flex';qRender();
+}
+$('#bO').onclick=()=>{queue=[];qBase=targetFolder();$('#qp').style.display='flex';qRender();chooseFolder()};
+$('#qz').onclick=()=>$('#upz').click();
+if(IOS){$('#qa').style.display='none';$('#bO').textContent='⬆ Ordner (ZIP)';$('#qh').textContent='iPad und iPhone erlauben Web-Apps keine Ordnerauswahl. Darum per ZIP: Ordner in der Dateien-App gedrückt halten, „Komprimieren“ wählen, dann hier „ZIP-Datei wählen“. Ordner, Unterordner und leere Ordner bleiben erhalten.'}
+$('#qa').onclick=chooseFolder;
+$('#qc').onclick=()=>{queue=[];qRender()};
+$('#qx').onclick=()=>{queue=[];$('#qp').style.display='none'};
+$('#qg').onclick=async()=>{if(!queue.length)return toast('Bitte zuerst Ordner wählen.');const l=queue;queue=[];$('#qp').style.display='none';await ingest(l,qBase)};
+$('#upd').onchange=e=>{
+  const fl=[...e.target.files],l=fl.map(f=>{const r=(f.webkitRelativePath||f.name).split('/');r.pop();return{f,dirs:r}});e.target.value='';
+  if(fl.length&&!fl.some(f=>(f.webkitRelativePath||'').includes('/')))toast('Dieses Gerät liefert keine Ordnerstruktur. Die Dateien wurden ohne Unterordner hinzugefügt – für ganze Ordner bitte „ZIP-Datei wählen“ nutzen.');
+  qAdd(l)};
+
+/* Drag & Drop (mehrere Ordner auf den Baum ziehen) */
+const readDir=r=>new Promise(res=>{const all=[];const go=()=>r.readEntries(es=>{if(!es.length)res(all);else{all.push(...es);go()}},()=>res(all));go()});
+async function walkEntry(en,dirs,out){
+  if(en.isFile){await new Promise(res=>en.file(f=>{out.push({f,dirs});res()},res))}
+  else if(en.isDirectory){out.push({folder:true,dirs:[...dirs,en.name]});for(const c of await readDir(en.createReader()))await walkEntry(c,[...dirs,en.name],out)}
+}
+const tr=$('#tree');
+tr.addEventListener('dragover',e=>{if(dragIds)return;e.preventDefault();tr.classList.add('dz')});
+tr.addEventListener('dragleave',()=>tr.classList.remove('dz'));
+tr.addEventListener('drop',async e=>{
+  if(dragIds)return;
+  e.preventDefault();tr.classList.remove('dz');
+  const ents=[...(e.dataTransfer.items||[])].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+  const out=[];
+  if(ents.length){for(const en of ents)await walkEntry(en,[],out)}
+  else out.push(...await expand([...e.dataTransfer.files]));
+  if(!out.length)return;
+  if(!queue.length)qBase=targetFolder();
+  qAdd(out);
+});
+
+/* ---------- Anzeige ---------- */
+function clearView(){$('#va')?.remove();$('#ttl').textContent='Keine Datei geöffnet';$('#view').innerHTML='<div class="empty"><div id="lc" style="margin-bottom:18px"></div>Datei links auswählen, um sie hier anzuzeigen.</div>';applyLogo()}
+const LIBURL={docx:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js',mammoth:'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js'};
+function ensureLib(k){
+  if(window[k])return Promise.resolve();
+  return new Promise((res,rej)=>{const sc=document.createElement('script');sc.src=LIBURL[k];sc.onload=()=>window[k]?res():rej(new Error(k+' fehlt'));sc.onerror=()=>rej(new Error(k+' nicht ladbar'));document.head.appendChild(sc)});
+}
+async function docxText(blob){
+  const z=await JSZip.loadAsync(blob),f=z.file('word/document.xml');if(!f)throw new Error('word/document.xml fehlt');
+  return (await f.async('string')).replace(/<w:tab\/>/g,'\t').replace(/<\/w:p>/g,'\n').replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&').trim();
+}
+async function openFile(n){
+  openFileId=n.id;render();
+  $('#ttl').textContent=n.name;const v=$('#view');v.innerHTML='<div class="empty" style="margin-top:10vh">Lade …</div>';
+  const my=n.id;
+  let stage='Laden';
+  try{
+    const blob=await blobOf(n.id);if(!blob)throw new Error('Dateiinhalt nicht im Speicher gefunden');if(!blob.size)throw new Error('Datei ist leer');
+    if(n.ext==='txt'){const t=await blob.text();if(openFileId!==my)return;v.innerHTML='<div class="paper"><pre></pre></div>';v.querySelector('pre').textContent=t}
+    else if(n.ext==='docx'){
+      let done=false;
+      stage='docx-preview';
+      try{
+        await ensureLib('docx');
+        const box=document.createElement('div');
+        await docx.renderAsync(blob,box,null,{className:'docx',inWrapper:true,breakPages:true,ignoreLastRenderedPageBreak:true});
+        if(openFileId!==my)return;v.innerHTML='';v.appendChild(box);
+        const wr=box.querySelector('.docx-wrapper'),avail=v.clientWidth-24;
+        if(wr&&wr.scrollWidth>avail)wr.style.zoom=avail/wr.scrollWidth;
+        done=true;
+      }catch(e){}
+      if(!done){
+        stage='mammoth';
+        try{await ensureLib('mammoth');const r=await mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});if(openFileId!==my)return;v.innerHTML='<div class="paper">'+r.value+'</div>';done=true}catch(e){}
       }
-      renderFileList();
-    }
-
-    function renderFileList() {
-      const filter = searchInput.value.toLowerCase();
-      fileListEl.innerHTML = '';
-
-      songsMap.forEach((song) => {
-        if (song.name.toLowerCase().includes(filter)) {
-          const li = document.createElement('li');
-          li.textContent = song.name;
-          li.onclick = () => {
-            document.querySelectorAll('#file-list li').forEach(el => el.classList.remove('active'));
-            li.classList.add('active');
-            displaySong(song);
-          };
-          fileListEl.appendChild(li);
-        }
-      });
-    }
-
-    async function displaySong(song) {
-      viewerEl.innerHTML = '<p style="color:#888;">Lade Song...</p>';
-
-      try {
-        const ext = song.ext;
-
-        if (ext === 'txt') {
-          const text = await song.file.text();
-          renderText(text);
-        }
-        else if (ext === 'html' || ext === 'htm') {
-          const htmlContent = await song.file.text();
-          renderHtml(htmlContent);
-        }
-        else if (ext === 'rtf') {
-          const rtfRaw = await song.file.text();
-          renderText(parseRTF(rtfRaw));
-        }
-        else if (ext === 'docx') {
-          await renderDOCX(song.file);
-        }
-        else if (ext === 'doc') {
-          await renderBinaryDOC(song.file);
-        }
-        else if (ext === 'pdf') {
-          await renderPDF(song.file);
-        }
-        else {
-          const rawText = await song.file.text();
-          renderText(rawText);
-        }
-      } catch (err) {
-        console.error(err);
-        viewerEl.innerHTML = `<div class="error-msg">Fehler beim Laden: ${err.message}</div>`;
+      if(!done){
+        stage='Textauszug';
+        const t=await docxText(blob);if(openFileId!==my)return;
+        v.innerHTML='<div class="paper"><div style="color:var(--mut);font-size:12px;margin-bottom:8px">Vereinfachte Ansicht (nur Text)</div><pre></pre></div>';v.querySelector('pre').textContent=t;
       }
     }
-
-    function renderText(text) {
-      const div = document.createElement('div');
-      div.className = 'text-content';
-      div.textContent = text;
-      viewerEl.innerHTML = '';
-      viewerEl.appendChild(div);
+    else if(AUDIO.includes(n.ext)){
+      v.innerHTML='<div class="paper" style="text-align:center"><div style="font-size:54px">🎵</div><div class="mt" style="font-weight:600;margin:8px 0"></div><div style="color:var(--mut)">Läuft im Player links unten. Du kannst weiter durch Ordner und Texte blättern – die Musik läuft weiter.</div></div>';
+      v.querySelector('.mt').textContent=n.name;playNode(n);
     }
-
-    function renderHtml(htmlContent) {
-      const cleanHtml = htmlContent.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-      viewerEl.innerHTML = cleanHtml;
-    }
-
-    // FIX FÜR DOCX: Koniert das ArrayBuffer (.slice(0)), damit der Speicher nicht gelehrt wird
-    async function renderDOCX(file) {
-      const buffer = await file.arrayBuffer();
-
-      try {
-        const result = await mammoth.convertToHtml({ arrayBuffer: buffer.slice(0) });
-        if (result.value && result.value.trim().length > 0) {
-          viewerEl.innerHTML = result.value;
-          return;
-        }
-      } catch (mErr) {
-        console.warn('Mammoth fehlgeschlagen, docx-preview Fallback...', mErr);
-      }
-
-      viewerEl.innerHTML = '<div id="docx-container"></div>';
-      const container = document.getElementById('docx-container');
-      await docx.renderAsync(buffer.slice(0), container);
-    }
-
-    // Liest alte binäre Word .doc Dateien aus
-    async function renderBinaryDOC(file) {
-      const buffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      let text = '';
-      let chunk = '';
-
-      for (let i = 0; i < bytes.length; i++) {
-        const b = bytes[i];
-        if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
-          chunk += String.fromCharCode(b);
-        } else if (b === 0 && i + 1 < bytes.length && bytes[i+1] >= 32 && bytes[i+1] <= 126) {
-          chunk += String.fromCharCode(bytes[i+1]);
-          i++;
-        } else {
-          if (chunk.trim().length > 2) {
-            if (!chunk.includes('WordDocument') && !chunk.includes('Root Entry') && !chunk.includes('CompObj')) {
-              text += chunk + '\n';
-            }
-          }
-          chunk = '';
-        }
-      }
-      if (chunk.trim().length > 2) text += chunk;
-
-      if (!text.trim()) {
-        text = await file.text();
-        text = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
-      }
-
-      renderText(text);
-    }
-
-    function parseRTF(rtf) {
-      return rtf
-        .replace(/\\par[d]?/g, '\n')
-        .replace(/\\tab/g, '\t')
-        .replace(/\\'[0-9a-fA-F]{2}/g, (m) => String.fromCharCode(parseInt(m.substring(2), 16)))
-        .replace(/{\\[*][^}]+}/g, '')
-        .replace(/\\[a-zA-Z]+-?\d* ?/g, '')
-        .replace(/[{}]/g, '')
-        .trim();
-    }
-
-    async function renderPDF(file) {
-      const buffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-      viewerEl.innerHTML = '';
-
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale: 1.5 });
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        canvas.style.maxWidth = '100%';
-        canvas.style.marginBottom = '20px';
-
-        await page.render({ canvasContext: context, viewport: viewport }).promise;
-        viewerEl.appendChild(canvas);
+    else if(n.ext==='pdf'){
+      await pdfWorker();
+      const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
+      if(openFileId!==my)return;v.innerHTML='';const w=Math.min(v.clientWidth,900);
+      for(let i=1;i<=pdf.numPages;i++){
+        const pg=await pdf.getPage(i);if(openFileId!==my)return;
+        const base=pg.getViewport({scale:1}),sc=w/base.width,vp=pg.getViewport({scale:sc*(window.devicePixelRatio||1)});
+        const cv=document.createElement('canvas');cv.width=vp.width;cv.height=vp.height;cv.style.width=w+'px';v.appendChild(cv);
+        await pg.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
       }
     }
-  </script>
+  }catch(err){
+    if(openFileId===my){
+      v.innerHTML='<div class="empty">Die Datei konnte nicht angezeigt werden.<div class="dg" style="font-size:12px;margin-top:10px;word-break:break-word"></div></div>';
+      v.querySelector('.dg').textContent='Fehler bei „'+stage+'“: '+((err&&err.message)||err)+' [docx-preview:'+!!window.docx+' mammoth:'+!!window.mammoth+' JSZip:'+!!window.JSZip+' pdf.js:'+!!window.pdfjsLib+']';
+    }
+  }
+}
+
+/* ---------- Editor + DOCX-Export ---------- */
+let edDirty=false,edNode=null;
+const canEdit=n=>n.ext==='txt'||n.ext==='docx'||(n.ext==='pdf'&&!!n.html);
+function removeEditor(){$('#tb')?.remove();$('#eb')?.remove();$('#va')?.remove();edDirty=false;edNode=null}
+async function closeEditor(){
+  if(edDirty&&!await ask('Das Dokument hat ungespeicherte Änderungen. Trotzdem schließen?',{ok:'Schließen',cancel:'Zurück'}))return;
+  const n=edNode;removeEditor();
+  if(n&&byId(n.id))openFile(n);else clearView();
+}
+function openEditor(name,html,node){
+  removeEditor();edNode=node||null;lastName=name;openFileId=null;render();
+  $('#ttl').textContent=(node?'Bearbeiten: ':'Neues Dokument: ')+name;
+  $('#view').innerHTML='<div class="paper"><div id="ed" contenteditable="true" spellcheck="true"></div></div>';
+  $('#ed').innerHTML=html||'';
+  const tb=document.createElement('div');tb.id='tb';
+  tb.innerHTML='<input type="text" id="fn" placeholder="Dateiname" style="width:200px"><button data-c="bold"><b>F</b></button><button data-c="italic"><i>K</i></button><button data-c="underline"><u>U</u></button><input type="color" id="col" value="#d11a1a" title="Textfarbe"><button id="cl">Farbe anwenden</button>';
+  $('#right').insertBefore(tb,$('#vs'));$('#fn').value=name;
+  document.execCommand('styleWithCSS',false,true);
+  tb.querySelectorAll('[data-c]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>document.execCommand(b.dataset.c)});
+  $('#cl').onmousedown=e=>e.preventDefault();
+  $('#cl').onclick=()=>document.execCommand('foreColor',false,$('#col').value);
+  $('#col').oninput=()=>document.execCommand('foreColor',false,$('#col').value);
+  const eb=document.createElement('div');eb.id='eb';
+  eb.innerHTML='<button id="ebc">✕ Schließen</button><button id="ebu">Speichern unter …</button><button class="pri" id="ebs">💾 Speichern</button>';
+  $('#right').appendChild(eb);
+  $('#ebs').onclick=()=>saveDocx(false);$('#ebu').onclick=()=>saveDocx(true);$('#ebc').onclick=closeEditor;
+  edDirty=false;$('#ed').addEventListener('input',()=>{edDirty=true});$('#ed').focus();
+}
+async function startEdit(n){
+  let html='';
+  if(n.html)html=n.html;
+  else if(n.ext==='txt'){const b=await blobOf(n.id);if(!b)return toast('Datei nicht lesbar.');html=(await b.text()).split(/\r?\n/).map(l=>'<div>'+(esc(l)||'<br>')+'</div>').join('')}
+  else if(n.ext==='docx'){
+    if(!await ask('Dieses Word-Dokument wurde nicht in der App erstellt. Beim Bearbeiten können Farben und komplexe Formatierungen verloren gehen.\n\nTrotzdem bearbeiten?',{ok:'Bearbeiten',cancel:'Abbrechen'}))return;
+    const b=await blobOf(n.id);if(!b)return toast('Datei nicht lesbar.');
+    html=(await mammoth.convertToHtml({arrayBuffer:await b.arrayBuffer()})).value;
+  }else return toast('Diese Datei kann nicht bearbeitet werden.');
+  openEditor(n.name.replace(EXT,''),html,n);
+}
+function showViewBar(n){
+  $('#va')?.remove();
+  const b=document.createElement('div');b.id='va';
+  b.innerHTML=(canEdit(n)?'<button class="pri" id="vae" title="Bearbeiten">✎</button>':'')+'<button id="vad" title="Herunterladen">⬇</button>';
+  $('#right').appendChild(b);
+  if(canEdit(n))$('#vae').onclick=()=>startEdit(n);
+  $('#vad').onclick=async()=>{try{await exportFile(n.name,await blobOf(n.id))}catch(e){toast('Herunterladen nicht möglich.')}};
+}
+$('#bN').onclick=async()=>{
+  if($('#ed')&&edDirty&&!await ask('Das aktuelle Dokument ist noch nicht gespeichert. Verwerfen und ein neues beginnen?',{ok:'Verwerfen',cancel:'Zurück'}))return;
+  const nm0=await ask('Dateiname für das neue Dokument (ohne Endung):',{input:true,def:'Neues Dokument',ok:'Weiter'});if(!nm0)return;
+  openEditor(nm0.replace(EXT,''),'',null);
+};
+const _of=openFile;openFile=async function(n){
+  if($('#ed')&&edDirty&&!await ask('Das Dokument hat ungespeicherte Änderungen. Verwerfen und Datei öffnen?',{ok:'Verwerfen',cancel:'Zurück'}))return;
+  removeEditor();showViewBar(n);$('#vs').scrollTo(0,0);return _of(n)};
+
+const esc=s=>s.replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+function hex(c){if(!c)return null;let m=c.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);if(m)return[m[1],m[2],m[3]].map(x=>(+x).toString(16).padStart(2,'0')).join('').toUpperCase();m=c.match(/^#([0-9a-f]{6})$/i);return m?m[1].toUpperCase():null}
+function toParas(root){
+  const paras=[];let cur=[];
+  const flush=()=>{paras.push(cur);cur=[]};
+  const BLK=/^(DIV|P|H[1-6]|LI|UL|OL|BLOCKQUOTE)$/;
+  const run=(node,f)=>{
+    if(node.nodeType===3){if(node.nodeValue)cur.push({t:node.nodeValue,...f});return}
+    if(node.nodeType!==1)return;
+    const g={...f},tag=node.tagName,st=node.style;
+    if(tag==='BR'){cur.push({br:1});return}
+    if(tag==='B'||tag==='STRONG'||st.fontWeight==='bold'||+st.fontWeight>=600)g.b=1;
+    if(tag==='I'||tag==='EM'||st.fontStyle==='italic')g.i=1;
+    if(tag==='U'||(st.textDecorationLine||st.textDecoration||'').includes('underline'))g.u=1;
+    const col=hex(st.color)||(tag==='FONT'?hex(node.getAttribute('color')):null);if(col)g.c=col;
+    if(/^H[1-6]$/.test(tag))g.b=1;
+    const blk=BLK.test(tag);
+    if(blk&&cur.length)flush();
+    node.childNodes.forEach(ch=>run(ch,g));
+    if(blk)flush();
+  };
+  root.childNodes.forEach(ch=>run(ch,{}));
+  if(cur.length)flush();
+  return paras;
+}
+function buildDocx(root){
+  const body=toParas(root).map(p=>{
+    const runs=p.map(r=>{
+      if(r.br)return'<w:r><w:br/></w:r>';
+      const pr=(r.b?'<w:b/>':'')+(r.i?'<w:i/>':'')+(r.u?'<w:u w:val="single"/>':'')+(r.c?`<w:color w:val="${r.c}"/>`:'');
+      return`<w:r>${pr?'<w:rPr>'+pr+'</w:rPr>':''}<w:t xml:space="preserve">${esc(r.t.replace(/\u00a0/g,' '))}</w:t></w:r>`;
+    }).join('');
+    return`<w:p>${runs}</w:p>`;
+  }).join('')||'<w:p/>';
+  const z=new JSZip();
+  z.file('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+  z.file('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  z.file('word/document.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+body+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>');
+  return z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+let lastName='Neues Dokument',lastFolder=null,lastFmt='docx';
+const EXT=/\.(docx|pdf|txt)$/i;
+function fpath(id){let p=[],x=byId(id);while(x&&x.id!=='root'){p.unshift(x.name);x=byId(x.parent)}return '/'+p.join('/')}
+function saveDialog(){
+  return new Promise(res=>{
+    let f=(lastFolder&&byId(lastFolder))?lastFolder:targetFolder();
+    const nm=$('#sn');nm.value=lastName;$('#sfm').value=lastFmt;
+    const draw=()=>{
+      const box=$('#sf');box.innerHTML='';
+      const add=(id,label,d)=>{const r=document.createElement('div');r.className='row'+(id===f?' sel':'');r.style.paddingLeft=(8+d*18)+'px';r.textContent=(id==='root'?'🗂 ':'📁 ')+label;r.onclick=()=>{f=id;draw()};box.appendChild(r)};
+      add('root','Defter (oberste Ebene)',0);
+      const walk=(pid,d)=>kids(pid).filter(n=>n.type==='folder').forEach(n=>{add(n.id,n.name,d);walk(n.id,d+1)});
+      walk('root',1);
+      $('#sp').textContent='Speicherort: '+(f==='root'?'/ (oberste Ebene)':fpath(f));
+    };
+    const close=v=>{$('#sv').style.display='none';res(v)};
+    $('#snf').onclick=async()=>{const n=await ask('Name des neuen Ordners in '+(f==='root'?'der obersten Ebene':fpath(f))+':',{input:true,ok:'Anlegen'});if(!n)return;const o={id:uid(),parent:f,type:'folder',name:n};nodes.push(o);put(o);open.add(f);f=o.id;render();draw()};
+    $('#sno').onclick=()=>close(null);
+    $('#sok').onclick=()=>{
+      let n=nm.value.trim().replace(EXT,'').replace(/[\\/:*?"<>|]/g,'_').trim();
+      if(!n){toast('Bitte einen Dateinamen eingeben.');nm.focus();return}
+      const fm=$('#sfm').value;close({name:n+'.'+fm,folder:f,fmt:fm});
+    };
+    nm.onkeydown=e=>{if(e.key==='Enter')$('#sok').click()};
+    draw();$('#sv').style.display='flex';setTimeout(()=>{nm.focus();nm.select()},60);
+  });
+}
+function buildPdf(root){
+  if(!window.jspdf)throw new Error('jsPDF fehlt');
+  const doc=new window.jspdf.jsPDF({unit:'pt',format:'a4'});
+  const W=595.28,H=841.89,M=56,maxW=W-2*M,fs=11,lh=fs*1.5;
+  let x=M,y=M+fs;
+  const nl=()=>{x=M;y+=lh;if(y>H-M){doc.addPage();y=M+fs}};
+  for(const p of toParas(root)){
+    for(const r of p){
+      if(r.br){nl();continue}
+      doc.setFont('helvetica',r.b&&r.i?'bolditalic':r.b?'bold':r.i?'italic':'normal');doc.setFontSize(fs);
+      const c=r.c||'000000',R=parseInt(c.slice(0,2),16),G=parseInt(c.slice(2,4),16),B=parseInt(c.slice(4,6),16);
+      doc.setTextColor(R,G,B);doc.setDrawColor(R,G,B);doc.setLineWidth(.6);
+      for(const tok of r.t.replace(/\u00a0/g,' ').split(/(\s+)/)){
+        if(!tok)continue;
+        const w=doc.getTextWidth(tok);
+        if(/^\s+$/.test(tok)){if(x>M&&x+w<M+maxW)x+=w;continue}
+        if(x+w>M+maxW&&x>M)nl();
+        doc.text(tok,x,y);
+        if(r.u)doc.line(x,y+1.8,x+w,y+1.8);
+        x+=w;
+      }
+    }
+    nl();
+  }
+  return doc.output('blob');
+}
+const mkBlob=async(fmt,ed)=>fmt==='pdf'?buildPdf(ed):fmt==='txt'?new Blob([ed.innerText],{type:'text/plain;charset=utf-8'}):await buildDocx(ed);
+async function saveDocx(asNew){
+  const ed=$('#ed');if(!ed||!ed.textContent.trim())return toast('Das Dokument ist leer.');
+  if(edNode&&!asNew&&byId(edNode.id)){
+    let b;try{b=await mkBlob(edNode.ext,ed)}catch(e){return toast('Speichern ist fehlgeschlagen.')}
+    edNode.blob=b;edNode.mime=b.type;edNode.html=ed.innerHTML;unindex(edNode.id);await put(edNode);
+    edDirty=false;render();return toast('Gespeichert: '+edNode.name);
+  }
+  const fnv=$('#fn');if(fnv&&fnv.value.trim())lastName=fnv.value.trim().replace(EXT,'');
+  const r=await saveDialog();if(!r)return;
+  const name=r.name,folder=r.folder,fmt=r.fmt;lastName=name.replace(EXT,'');lastFolder=folder;lastFmt=fmt;
+  let blob;
+  try{blob=await mkBlob(fmt,ed)}catch(e){return toast('Speichern als '+fmt.toUpperCase()+' ist fehlgeschlagen.')}
+  let saved=kids(folder).find(x=>x.type==='file'&&x.name===name);
+  if(saved){
+    if(!await ask(`Die Datei „${name}“ gibt es in diesem Ordner schon.\n\nÜberschreiben?`,{ok:'Überschreiben'}))return;
+    saved.blob=blob;saved.mime=blob.type;saved.ext=fmt;saved.html=ed.innerHTML;unindex(saved.id);await put(saved);
+  }else{saved={id:uid(),parent:folder,type:'file',name,ext:fmt,blob,mime:blob.type,html:ed.innerHTML};nodes.push(saved);await put(saved)}
+  edNode=saved;edDirty=false;$('#ttl').textContent='Bearbeiten: '+name;
+  open.add(folder);render();usage();
+  let ok=false;
+  if(!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform())){try{await exportFile(name,blob);ok=true}catch(e){}}
+  toast((ok?'Gespeichert und heruntergeladen: ':'Gespeichert in '+fpath(folder)+': ')+name);
+}
+
+$('#bR').onclick=async()=>{
+  const top=topOf([...marked]);
+  if(top.length>1)return toast('Zum Umbenennen bitte nur einen Eintrag markieren.');
+  const id=top.length?top[0]:selId,n=byId(id);
+  if(!n||id==='root')return toast('Bitte zuerst einen Ordner oder eine Datei markieren.');
+  const dot=n.type==='file'?n.name.lastIndexOf('.'):-1,base=dot>0?n.name.slice(0,dot):n.name,ext=dot>0?n.name.slice(dot):'';
+  const v=await ask('Neuer Name für '+(n.type==='folder'?'den Ordner':'die Datei')+(ext?' (Endung '+ext+' bleibt)':'')+':',{input:true,def:base,ok:'Umbenennen'});
+  if(!v)return;
+  let b=v;if(ext&&b.toLowerCase().endsWith(ext.toLowerCase()))b=b.slice(0,-ext.length);
+  b=b.replace(/[\\/:*?"<>|]/g,'_').trim();if(!b)return;
+  const nn=b+ext;
+  if(nn===n.name)return;
+  if(nodes.some(x=>x.parent===n.parent&&x.id!==n.id&&x.type===n.type&&x.name===nn))return toast('Dort gibt es schon „'+nn+'“.');
+  n.name=nn;put(n);if(openFileId===n.id)$('#ttl').textContent=nn;render();toast('Umbenannt in „'+nn+'“');
+};
+/* ---------- Logo ---------- */
+let logo=null,logoURL=null;
+function applyLogo(){
+  document.querySelectorAll('img.logo').forEach(x=>x.remove());
+  if(logoURL){URL.revokeObjectURL(logoURL);logoURL=null}
+  $('#head').classList.remove('hc');
+  if(!logo||!logo.blob)return;
+  logoURL=URL.createObjectURL(logo.blob);
+  const im=document.createElement('img');im.className='logo';im.src=logoURL;im.alt='Logo';im.style.height=logo.size+'px';
+  if(logo.pos==='left'){im.style.margin='0 auto';$('#logoL').appendChild(im)}
+  else if(logo.pos==='head-left'){$('#head').prepend(im)}
+  else if(logo.pos==='head-center'){$('#head').classList.add('hc');$('#head').appendChild(im);im.style.margin='0 auto'}
+  else if(logo.pos==='center'){const lc=$('#lc');if(lc){lc.appendChild(im);im.style.margin='0 auto'}}
+  else{im.style.marginLeft='auto';$('#head').appendChild(im)}
+}
+function logoDialog(){
+  let tb=logo?logo.blob:null,url=null;const pv=$('#lpv');
+  const show=()=>{pv.innerHTML='';if(url){URL.revokeObjectURL(url);url=null}if(tb){url=URL.createObjectURL(tb);const i=document.createElement('img');i.src=url;i.style.cssText='max-width:100%;max-height:100%;object-fit:contain';pv.appendChild(i)}else pv.textContent='kein Logo'};
+  $('#lpos').value=logo?logo.pos:'head-right';$('#lsz').value=logo?logo.size:56;$('#lsv').textContent=$('#lsz').value;
+  $('#lsz').oninput=()=>{$('#lsv').textContent=$('#lsz').value};
+  $('#lf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(!f)return;if(!(/^image\//.test(f.type)||/\.(png|jpe?g|gif|webp|svg)$/i.test(f.name)))return toast('Bitte eine Bilddatei wählen.');tb=f;show()};
+  const close=()=>{$('#lg').style.display='none';if(url){URL.revokeObjectURL(url);url=null}};
+  $('#lno').onclick=close;
+  $('#lrm').onclick=()=>{logo=null;del('__logo');applyLogo();close();toast('Logo entfernt')};
+  $('#lok').onclick=()=>{if(!tb)return toast('Bitte zuerst ein Bild wählen.');logo={id:'__logo',blob:tb,pos:$('#lpos').value,size:+$('#lsz').value};put(logo);applyLogo();close();toast('Logo gespeichert')};
+  show();$('#lg').style.display='flex';
+}
+$('#bL').onclick=logoDialog;
+
+/* ---------- Kopieren / Ausschneiden / Einfügen ---------- */
+let clip={ids:[],mode:null};
+const cutd=id=>clip.mode==='cut'&&clip.ids.some(c=>isDesc(id,c));
+const icon=n=>n.type==='folder'?'📁':n.ext==='pdf'?'📕':n.ext==='docx'?'📘':AUDIO.includes(n.ext)?'🎵':'📄';
+function clipSet(cut){
+  const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
+  if(!tg.length)return toast('Bitte zuerst Ordner oder Dateien markieren.');
+  clip={ids:tg,mode:cut?'cut':'copy'};render();
+  toast(tg.length+' Eintrag/Einträge '+(cut?'ausgeschnitten':'kopiert')+' – Zielordner wählen und „Einfügen“');
+}
+$('#bCp').onclick=()=>clipSet(false);
+$('#bCt').onclick=()=>clipSet(true);
+$('#bPs').onclick=async()=>{
+  if(!clip.ids.length)return toast('Die Zwischenablage ist leer.');
+  const dest=targetFolder();
+  if(clip.mode==='cut'){const ids=clip.ids;clip={ids:[],mode:null};await moveItems(ids,dest);render();return}
+  let ids=clip.ids.filter(i=>byId(i));
+  const bad=ids.filter(i=>isDesc(dest,i));
+  if(bad.length){toast('Ein Ordner kann nicht in sich selbst kopiert werden.');ids=ids.filter(i=>!bad.includes(i))}
+  const uniq=(par,name,type)=>{
+    const has=nm=>nodes.some(x=>x.parent===par&&x.type===type&&x.name===nm);
+    if(!has(name))return name;
+    const dot=type==='file'?name.lastIndexOf('.'):-1,b=dot>0?name.slice(0,dot):name,e=dot>0?name.slice(dot):'';
+    let k=1,nn;do{nn=b+' - Kopie'+(k>1?' ('+k+')':'')+e;k++}while(has(nn));return nn};
+  let c=0;
+  const cp=async(id,par)=>{const n=byId(id),o={...n,id:uid(),parent:par,name:uniq(par,n.name,n.type)};if(n.type==='file')o.blob=await blobOf(id);nodes.push(o);await put(o);c++;
+    if(n.type==='folder')for(const k of kids(id).map(x=>x.id))await cp(k,o.id)};
+  for(const i of ids)await cp(i,dest);
+  open.add(dest);render();if(c)toast(c+' Eintrag/Einträge eingefügt');
+};
+
+/* ---------- Herunterladen ---------- */
+async function exportFile(name,blob){
+  const P=window.Capacitor&&Capacitor.Plugins;
+  if(P&&P.Filesystem&&P.Share){
+    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(blob)});
+    const w=await P.Filesystem.writeFile({path:name,data:b64,directory:'CACHE'});
+    await P.Share.share({title:name,files:[w.uri],dialogTitle:'Datei speichern oder teilen'});
+    return;
+  }
+  try{const d=window.claude&&await claude.use('downloads');if(d){await d.save({filename:name,data:blob});return}}catch(e){if(e&&e.code==='declined')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();
+}
+$('#bX').onclick=async()=>{
+  const files=(marked.size?[...marked]:[selId]).map(byId).filter(n=>n&&n.type==='file');
+  if(!files.length)return toast('Bitte zuerst eine Datei markieren.');
+  if(files.length>10&&!await ask(files.length+' Dateien nacheinander herunterladen?',{ok:'Herunterladen'}))return;
+  for(const f of files){try{await exportFile(f.name,await blobOf(f.id))}catch(e){toast('Herunterladen nicht möglich: '+f.name);break}}
+};
+
+/* ---------- Suche ---------- */
+let qTok=0,qd=null,idxP=null;
+const PDFW='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';let pwu=null;
+async function pdfWorker(){
+  if(!pwu){try{const r=await fetch(PDFW);if(!r.ok)throw 0;pwu=URL.createObjectURL(new Blob([await r.text()],{type:'text/javascript'}))}catch(e){pwu=PDFW}}
+  pdfjsLib.GlobalWorkerOptions.workerSrc=pwu;
+}
+async function extractText(n){
+  let t='';
+  if(!['txt','docx','pdf'].includes(n.ext)){putText(n.id,'');return}
+  try{
+    const blob=await blobOf(n.id);if(!blob)return;
+    if(n.ext==='txt')t=await blob.text();
+    else if(n.ext==='docx'&&window.mammoth)t=(await mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()})).value;
+    else if(n.ext==='pdf'&&window.pdfjsLib){
+      await pdfWorker();
+      const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
+      for(let i=1;i<=pdf.numPages;i++){const c=await (await pdf.getPage(i)).getTextContent();t+=c.items.map(x=>x.str).join(' ')+' '}
+    }
+  }catch(e){t=''}
+  if(byId(n.id)===n)putText(n.id,t.replace(/\s+/g,' ').trim());
+}
+function indexMissing(){
+  if(idxP)return idxP;
+  idxP=(async()=>{
+    const todo=nodes.filter(n=>n.type==='file'&&!indexed.has(n.id));let i=0;
+    for(const n of todo){if(!byId(n.id))continue;setStatus('Indexiere Dateiinhalte … '+(++i)+' von '+todo.length);await extractText(n)}
+    setStatus('');
+  })().finally(()=>{idxP=null});
+  return idxP;
+}
+function scanText(q,tok){return new Promise(res=>{
+  const hits=new Map();if(!db)return res(hits);
+  try{const rq=db.transaction('t').objectStore('t').openCursor();
+    rq.onsuccess=()=>{const c=rq.result;if(!c||tok!==qTok)return res(hits);
+      const t=c.value.txt,i=(c.value.nv===2?c.value.nt:norm(t)).indexOf(q);
+      if(i>=0){
+        const M=normMap(t),st=M.m[i]??i,e=q.length?(M.m[i+q.length-1]!==undefined?M.m[i+q.length-1]+M.sp[i+q.length-1]:i+q.length):st,s0=Math.max(0,st-40);
+        hits.set(c.value.id,{pre:(s0>0?'… ':'')+t.slice(s0,st),m:t.slice(st,e),post:t.slice(e,e+70)+' …'})}
+      c.continue()};
+    rq.onerror=()=>res(hits)}catch(e){res(hits)}})}
+async function runSearch(){
+  const tok=++qTok,q=norm($('#q').value.trim());
+  if(!q){contentHits=new Map();render();return}
+  contentHits=await scanText(q,tok);if(tok!==qTok)return;render();
+  if(nodes.some(n=>n.type==='file'&&!indexed.has(n.id))){
+    await indexMissing();if(tok!==qTok)return;
+    contentHits=await scanText(q,tok);if(tok!==qTok)return;render();
+  }
+}
+function clearSearch(){$('#q').value='';qTok++;contentHits=new Map();setStatus('');render()}
+$('#qc2').onclick=clearSearch;
+$('#q').addEventListener('keydown',e=>{if(e.key==='Escape')clearSearch()});
+$('#q').oninput=()=>{contentHits=new Map();render();clearTimeout(qd);qd=setTimeout(runSearch,400)};
+function searchList(t,q){
+  const res=nodes.map(n=>{const h=contentHits.get(n.id);return(norm(n.name).includes(q)||h)?{n,h}:null}).filter(Boolean).sort((a,b)=>a.n.name.localeCompare(b.n.name,'de'));
+  if(!res.length){const d=document.createElement('div');d.className='empty';d.style.marginTop='30px';d.textContent='Keine Treffer.';t.appendChild(d);return}
+  res.slice(0,500).forEach(({n,h})=>{
+    const r=document.createElement('div');r.className='row'+(marked.has(n.id)?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'');r.dataset.id=n.id;r.style.paddingLeft='12px';
+    const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};
+    const ic=document.createElement('span');ic.textContent=icon(n);
+    const box=document.createElement('div');box.style.cssText='min-width:0;flex:1;overflow:hidden';
+    const l1=document.createElement('div');l1.className='nm';l1.textContent=n.name;
+    const pa=document.createElement('span');pa.style.cssText='color:var(--mut);font-size:12px;margin-left:8px';pa.textContent=fpath(n.parent);l1.appendChild(pa);
+    box.appendChild(l1);
+    if(h){
+      const l2=document.createElement('div');l2.style.cssText='font-size:12px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+      const m=document.createElement('mark');m.textContent=h.m;l2.append(h.pre,m,h.post);box.appendChild(l2);
+    }
+    if(multi)r.append(cb);r.append(ic,box);
+    r.onclick=()=>{if(Date.now()-lpAt<700)return;if(multi){setMark(n.id,!marked.has(n.id));render();return}selId=n.id;
+      if(n.type==='file')openFile(n);
+      else{$('#q').value='';setStatus('');let x=byId(n.id);while(x&&x.id!=='root'){open.add(x.id);x=byId(x.parent)}render()}};
+    t.appendChild(r);
+  });
+  if(res.length>500){const d=document.createElement('div');d.className='empty';d.style.marginTop='10px';d.textContent='Nur die ersten 500 von '+res.length+' Treffern – Suchbegriff genauer fassen.';t.appendChild(d)}
+}
+
+/* ---------- Kontextmenü (Rechtsklick / langes Drücken) ---------- */
+const cm=$('#cm');
+function menuAdd(label,key,fn){const d=document.createElement('div');d.className='cmi';d.innerHTML='<span></span><small></small>';d.firstChild.textContent=label;d.lastChild.textContent=key||'';d.onclick=fn;cm.appendChild(d)}
+$('#tree').addEventListener('contextmenu',e=>{
+  e.preventDefault();if(Date.now()-lpAt<900)return;
+  const r=e.target.closest('.row'),id=r&&r.dataset.id;
+  if(id){if(!marked.has(id))marked.clear();selId=id;render()}
+  cm.innerHTML='';const n=id?byId(id):null;
+  if(n&&n.type==='file')menuAdd('Öffnen','',()=>openFile(n));
+  if(n&&n.type==='file'&&canEdit(n))menuAdd('✎ Bearbeiten','',()=>startEdit(n));
+  if(n){
+    menuAdd('⧉ Kopieren','Strg+C',()=>$('#bCp').click());
+    menuAdd('✂ Ausschneiden','Strg+X',()=>$('#bCt').click());
+  }
+  menuAdd('📋 Einfügen','Strg+V',()=>$('#bPs').click());
+  if(n){
+    menuAdd('✎ Umbenennen','F2',()=>$('#bR').click());
+    menuAdd('↪ Verschieben …','',()=>$('#bV').click());
+    if(n.type==='file')menuAdd('⬇ Herunterladen','',()=>$('#bX').click());
+    menuAdd('🗑 Löschen','Entf',()=>$('#bD').click());
+  }
+  menuAdd('＋ Neuer Ordner','',()=>$('#bF').click());
+  cm.style.display='block';
+  cm.style.left=Math.max(4,Math.min(e.clientX,innerWidth-cm.offsetWidth-6))+'px';
+  cm.style.top=Math.max(4,Math.min(e.clientY,innerHeight-cm.offsetHeight-6))+'px';
+});
+document.addEventListener('click',()=>{cm.style.display='none'});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')cm.style.display='none'});
+$('#tree').addEventListener('scroll',()=>{cm.style.display='none'});
+
+/* ---------- Werkzeugleiste ein-/ausklappen ---------- */
+function updTT(){const on=$('#tools').classList.contains('on');$('#tt').textContent=(on?'▾':'▸')+' Menü'+(marked.size?' ('+marked.size+')':'')}
+function setTools(on){$('#tools').classList.toggle('on',on);try{localStorage.setItem('tools',on?'1':'0')}catch(e){}updTT()}
+$('#tt').onclick=()=>setTools(!$('#tools').classList.contains('on'));
+try{if(localStorage.getItem('tools')==='1')$('#tools').classList.add('on')}catch(e){}
+
+/* ---------- Trennlinie ziehen ---------- */
+(()=>{
+  const L=$('#left'),sp=$('#split');let dr=false;
+  const set=w=>{L.style.width=Math.max(180,Math.min(innerWidth-120,w))+'px'};
+  try{const w=+localStorage.getItem('lw');if(w)set(w)}catch(e){}
+  const sph=$('#sph'),mv=e=>{const r=sp.getBoundingClientRect();sph.style.top=Math.max(20,Math.min(r.height-20,e.clientY-r.top))+'px'};
+  sp.addEventListener('pointerdown',e=>{dr=true;sp.classList.add('dr');sp.setPointerCapture(e.pointerId);mv(e);e.preventDefault()});
+  sp.addEventListener('pointermove',e=>{if(dr){set(e.clientX);mv(e)}});
+  const end=()=>{if(!dr)return;dr=false;sp.classList.remove('dr');sph.style.top='';try{localStorage.setItem('lw',parseInt(L.style.width))}catch(e){}};
+  sp.addEventListener('pointerup',end);sp.addEventListener('pointercancel',end);
+  sp.addEventListener('dblclick',()=>{L.style.width='380px';try{localStorage.removeItem('lw')}catch(e){}});
+})();
+
+/* ---------- Zoom rechts: nur skalieren wie bei PDF (kein Umbruch) ---------- */
+(()=>{
+  const v=$('#vs'),zt=$('#view'),P=18;let z=1,g=null;
+  const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  const mid=t=>{const r=v.getBoundingClientRect();return[(t[0].clientX+t[1].clientX)/2-r.left,(t[0].clientY+t[1].clientY)/2-r.top]};
+  const clamp=x=>Math.min(5,Math.max(.5,x));
+  const show=()=>{$('#zr').textContent=Math.round(z*100)+' %'};
+  function commit(nz,mx,my,fx,fy){z=nz;zt.style.transform=Math.abs(z-1)<.001?'':'scale('+z+')';show();v.scrollLeft=P+fx*z-mx;v.scrollTop=P+fy*z-my}
+  const step=f=>{const cx=v.clientWidth/2,cy=v.clientHeight/2;commit(clamp(z*f),cx,cy,(v.scrollLeft+cx-P)/z,(v.scrollTop+cy-P)/z)};
+  v.addEventListener('touchstart',e=>{
+    if(e.touches.length===2){
+      v.style.overflow='hidden';zt.style.willChange='transform';   // Scrollen sperren, solange gezoomt wird
+      const[mx,my]=mid(e.touches);g={d0:dist(e.touches),z0:z,fx:(v.scrollLeft+mx-P)/z,fy:(v.scrollTop+my-P)/z,sl:v.scrollLeft,st:v.scrollTop,nz:z,mx,my};
+    }
+  },{passive:true});
+  v.addEventListener('touchmove',e=>{
+    if(!g||e.touches.length!==2)return;
+    if(e.cancelable)e.preventDefault();
+    const[mx,my]=mid(e.touches);g.nz=clamp(g.z0*dist(e.touches)/g.d0);g.mx=mx;g.my=my;
+    zt.style.transform='translate('+(g.sl+mx-P-g.fx*g.nz)+'px,'+(g.st+my-P-g.fy*g.nz)+'px) scale('+g.nz+')';
+  },{passive:false});
+  const end=e=>{if(g&&e.touches.length<2){const k=g;g=null;v.style.overflow='';zt.style.willChange='';commit(k.nz,k.mx,k.my,k.fx,k.fy)}};
+  v.addEventListener('touchend',end);v.addEventListener('touchcancel',end);
+  v.addEventListener('wheel',e=>{
+    if(!e.ctrlKey)return;e.preventDefault();
+    const r=v.getBoundingClientRect(),cx=e.clientX-r.left,cy=e.clientY-r.top;
+    commit(clamp(z*(e.deltaY<0?1.1:.9)),cx,cy,(v.scrollLeft+cx-P)/z,(v.scrollTop+cy-P)/z);
+  },{passive:false});
+  $('#zp').onclick=()=>step(1.25);$('#zm').onclick=()=>step(0.8);
+  $('#zr').onclick=()=>{z=1;zt.style.transform='';show();v.scrollLeft=0};
+})();
+
+/* ---------- Linken Bereich komplett ein-/ausblenden ---------- */
+function setLeft(show){
+  document.body.classList.toggle('nol',!show);
+  $('#lt').textContent=show?'◀':'▶';$('#lt').title=show?'Ordnerbaum ausblenden':'Ordnerbaum einblenden';
+  try{localStorage.setItem('left',show?'1':'0')}catch(e){}
+}
+$('#lt').onclick=()=>setLeft(document.body.classList.contains('nol'));
+try{if(localStorage.getItem('left')==='0')setLeft(false)}catch(e){}
+
+/* ---------- MP3-Player ---------- */
+const MIME={mp3:'audio/mpeg',m4a:'audio/mp4',wav:'audio/wav',ogg:'audio/ogg'};
+let auURL=null,playId=null;
+async function playNode(n){
+  const b=await blobOf(n.id);if(!b)return toast('Datei nicht lesbar.');
+  if(auURL)URL.revokeObjectURL(auURL);
+  auURL=URL.createObjectURL(new Blob([b],{type:MIME[n.ext]||b.type}));
+  const au=$('#au');au.src=auURL;playId=n.id;$('#mpt').textContent='🎵 '+n.name;$('#mp').style.display='flex';
+  au.play().catch(()=>{});
+  try{if('mediaSession' in navigator){navigator.mediaSession.metadata=new MediaMetadata({title:n.name});navigator.mediaSession.setActionHandler('nexttrack',()=>stepAudio(1));navigator.mediaSession.setActionHandler('previoustrack',()=>stepAudio(-1))}}catch(e){}
+}
+function stepAudio(d){
+  const cur=byId(playId);if(!cur)return;
+  const l=kids(cur.parent).filter(x=>x.type==='file'&&AUDIO.includes(x.ext)),i=l.findIndex(x=>x.id===cur.id)+d;
+  if(i>=0&&i<l.length)playNode(l[i]);
+}
+$('#au').addEventListener('ended',()=>stepAudio(1));
+$('#mpn').onclick=()=>stepAudio(1);$('#mpp').onclick=()=>stepAudio(-1);
+$('#mpx').onclick=()=>{const a=$('#au');a.pause();a.removeAttribute('src');a.load();$('#mp').style.display='none';playId=null};
+
+(async()=>{await openDB();const all=await loadAll();logo=all.find(n=>n.id==='__logo')||null;nodes=all.filter(n=>n.id!=='root'&&n.id!=='__logo');
+  nodes.forEach(n=>{if(n.blob||n.txt!==undefined)put(n)});
+  await loadKeys();applyLogo();render();usage();
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}})();
+</script>
+<script>
+if('serviceWorker' in navigator&&location.protocol==='https:'){
+  addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+    navigator.serviceWorker.ready.then(()=>{try{if(!localStorage.getItem('offlineOk')){localStorage.setItem('offlineOk','1');toast('Offline-Modus bereit')}}catch(e){}});
+  });
+}
+</script>
 </body>
 </html>
