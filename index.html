@@ -8,12 +8,13 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <meta name="theme-color" content="#121212" />
 
-  <!-- externe Bibliotheken -->
+  <!-- Externe Bibliotheken -->
   <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.1.15/dist/docx-preview.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 
   <style>
+    /* DEINE ORIGINALEN STYLES BLEIBEN UNVERÄNDERT */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -109,7 +110,6 @@
       border-radius: 6px;
       border: 1px solid #ff453a;
     }
-    /* docx-preview Dark Mode Styles */
     .docx-wrapper { background: transparent !important; padding: 0 !important; }
     .docx-wrapper > section.docx {
       background: #1e1e1e !important;
@@ -125,8 +125,8 @@
     <h1>Defter Song Reader</h1>
     <div class="controls">
       <label class="btn" for="file-input">Dateien importieren</label>
-      <!-- Umfassendes accept-Attribut für Betriebssysteme (MIME-Types + Endungen) -->
-      <input type="file" id="file-input" multiple accept=".txt,.rtf,.doc,.docx,.html,.htm,.pdf,text/plain,text/rtf,text/html,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,application/rtf" />
+      <!-- Erweitere accept-Liste um alle Endungen & MIME-Types damit nichts ausgegraut wird -->
+      <input type="file" id="file-input" multiple accept="*/*,.txt,.rtf,.doc,.docx,.html,.htm,.pdf" />
       <button id="btn-new-song">+ Neuer Song</button>
     </div>
   </header>
@@ -150,7 +150,6 @@
 
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-    // Map speichert die geladenen Dateien im Arbeitsspeicher
     const songsMap = new Map();
     const fileInput = document.getElementById('file-input');
     const fileListEl = document.getElementById('file-list');
@@ -165,8 +164,6 @@
       for (let file of files) {
         const id = file.name + '_' + file.size + '_' + file.lastModified;
         const ext = file.name.split('.').pop().toLowerCase();
-
-        // Speichere die Original-Datei unberührt
         songsMap.set(id, { id, name: file.name, file, ext });
       }
       renderFileList();
@@ -206,8 +203,7 @@
         }
         else if (ext === 'rtf') {
           const rtfRaw = await song.file.text();
-          const parsedText = parseRTF(rtfRaw);
-          renderText(parsedText);
+          renderText(parseRTF(rtfRaw));
         }
         else if (ext === 'docx') {
           await renderDOCX(song.file);
@@ -219,7 +215,6 @@
           await renderPDF(song.file);
         }
         else {
-          // Fallback: versuche Textanzeige
           const rawText = await song.file.text();
           renderText(rawText);
         }
@@ -228,8 +223,6 @@
         viewerEl.innerHTML = `<div class="error-msg">Fehler beim Laden: ${err.message}</div>`;
       }
     }
-
-    // --- ANZEIGE-LOGIK ---
 
     function renderText(text) {
       const div = document.createElement('div');
@@ -244,19 +237,18 @@
       viewerEl.innerHTML = cleanHtml;
     }
 
-    // Behebt den DOCX-Puffer-Fehler
+    // FIX FÜR DOCX: Koniert das ArrayBuffer (.slice(0)), damit der Speicher nicht gelehrt wird
     async function renderDOCX(file) {
       const buffer = await file.arrayBuffer();
 
       try {
-        // buffer.slice(0) schützt den Hauptpuffer im State
         const result = await mammoth.convertToHtml({ arrayBuffer: buffer.slice(0) });
         if (result.value && result.value.trim().length > 0) {
           viewerEl.innerHTML = result.value;
           return;
         }
       } catch (mErr) {
-        console.warn('Mammoth konnte DOCX nicht rendern, nutze docx-preview...', mErr);
+        console.warn('Mammoth fehlgeschlagen, docx-preview Fallback...', mErr);
       }
 
       viewerEl.innerHTML = '<div id="docx-container"></div>';
@@ -264,27 +256,23 @@
       await docx.renderAsync(buffer.slice(0), container);
     }
 
-    // Auslesen alter Word .doc-Dateien (Word 97-2003)
+    // Liest alte binäre Word .doc Dateien aus
     async function renderBinaryDOC(file) {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
-
       let text = '';
       let chunk = '';
 
       for (let i = 0; i < bytes.length; i++) {
         const b = bytes[i];
-        // Standard ASCII / Zeilenumbrüche
         if ((b >= 32 && b <= 126) || b === 10 || b === 13 || b === 9) {
           chunk += String.fromCharCode(b);
         } else if (b === 0 && i + 1 < bytes.length && bytes[i+1] >= 32 && bytes[i+1] <= 126) {
-          // UTF-16 Unicode
           chunk += String.fromCharCode(bytes[i+1]);
           i++;
         } else {
           if (chunk.trim().length > 2) {
-            // Ausfiltern interner Word-Metadaten
-            if (!chunk.includes('WordDocument') && !chunk.includes('Root Entry') && !chunk.includes('CompObj') && !chunk.includes('ObjectPool')) {
+            if (!chunk.includes('WordDocument') && !chunk.includes('Root Entry') && !chunk.includes('CompObj')) {
               text += chunk + '\n';
             }
           }
@@ -294,7 +282,6 @@
       if (chunk.trim().length > 2) text += chunk;
 
       if (!text.trim()) {
-        // Zweiter Fallback: UTF-8 Text-Read
         text = await file.text();
         text = text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
       }
@@ -302,7 +289,6 @@
       renderText(text);
     }
 
-    // RTF Steuerzeichen-Stripper
     function parseRTF(rtf) {
       return rtf
         .replace(/\\par[d]?/g, '\n')
@@ -314,7 +300,6 @@
         .trim();
     }
 
-    // PDF Renderer
     async function renderPDF(file) {
       const buffer = await file.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
