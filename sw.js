@@ -1,4 +1,4 @@
-const V='defter-v18'; // bei Updates der App hochzählen (v2, v3 ...)
+const V='defter-v19'; // bei Updates der App hochzählen (v2, v3 ...)
 const LIBS=[
  "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
  "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
@@ -25,12 +25,18 @@ self.addEventListener('fetch',e=>{
   e.respondWith((async()=>{
     const c=await caches.open(V);
     if(isPage){
-      // online: immer die neueste Version holen (max. 4 s warten), offline: gespeicherte Version
-      try{
-        const res=await Promise.race([fetch(r,{cache:'no-cache'}),new Promise((_,rej)=>setTimeout(rej,4000))]);
-        if(res&&res.ok){c.put('index.html',res.clone());return res}
-      }catch(x){}
-      const i=await c.match('index.html');if(i)return i;
+      // sofort die gespeicherte Version zeigen, im Hintergrund nach einer neuen suchen
+      const cached=await c.match('index.html');
+      const fresh=fetch(r,{cache:'no-cache'}).then(async res=>{
+        if(res&&res.ok){
+          const o=cached&&(cached.headers.get('etag')||cached.headers.get('last-modified')),nw=res.headers.get('etag')||res.headers.get('last-modified');
+          await c.put('index.html',res.clone());
+          if(cached&&o&&nw&&o!==nw)(await self.clients.matchAll()).forEach(cl=>cl.postMessage({type:'update'}));
+        }
+        return res;
+      }).catch(()=>null);
+      if(cached){e.waitUntil(fresh);return cached}
+      const res=await fresh;if(res)return res;
     }
     const m=await caches.match(r,{ignoreVary:true,ignoreSearch:r.mode==='navigate'});
     if(m)return m;

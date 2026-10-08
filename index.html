@@ -109,6 +109,8 @@ body.sel #sb{display:flex}
 #sb button{padding:5px 9px;font-size:15px}
 .cb{width:18px;height:18px}
 .row{-webkit-touch-callout:none}
+#hm{display:none;min-width:40px;padding:8px 10px;font-size:15px;background:#fff3a8;border-color:#e3cb55;color:#333}
+body.hasmain #hm{display:block}
 .fi{flex:none;vertical-align:middle}
 .txtv{white-space:pre-wrap;overflow-wrap:anywhere;font:18px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 .note{color:var(--mut);font-size:12px;margin-bottom:8px}
@@ -132,7 +134,7 @@ body.sq #sc{display:flex}
 <body>
 <div id="left">
   <div id="logoL"></div>
-  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><span id="qw"><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"><button id="qc2" title="Suche schließen" aria-label="Suche schließen">✕</button></span></div>
+  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><button id="hm" title="Zum Hauptordner springen">★</button><span id="qw"><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"><button id="qc2" title="Suche schließen" aria-label="Suche schließen">✕</button></span></div>
   <div id="sc"><span>Suchen in:</span><button id="scD">DEFTER</button><button id="scO">ORDNER</button><span id="scl"></span></div>
   <div id="qs"></div>
   <div id="tools">
@@ -142,6 +144,7 @@ body.sq #sc{display:flex}
     <button id="bO">⬆ Ordner</button><input id="upd" type="file" webkitdirectory multiple hidden><input id="upz" type="file" accept=".zip,application/zip" multiple hidden>
     <button id="bN">📝 Neues Dokument</button>
     <button id="bL">🖼 Logo</button>
+    <button id="bH">★ Hauptordner</button>
   </div>
   <div class="bar">
     <button id="bCp">⧉ Kopieren</button>
@@ -210,11 +213,6 @@ body.sq #sc{display:flex}
 <div id="cm"></div>
 <div id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 const $=s=>document.querySelector(s);
 const marked=new Set();let multi=false,dragIds=null,lpAt=0;
@@ -227,7 +225,8 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 18';
+const APPV='Version 19';
+let mainId=null;
 const setStatus=m=>{$('#qs').textContent=m};
 /* Suche: Groß/Klein und Sonderzeichen gleichsetzen (ç=c, ğ=g, ş=s, ı/İ=i, ö=o, ü=u, ä=a, ß=s ...) – Länge bleibt gleich */
 const NMAP={'ı':'i','ß':'s','ø':'o','đ':'d','ł':'l','æ':'a','œ':'o'};
@@ -244,11 +243,21 @@ function openDB(){return new Promise(res=>{try{const r=indexedDB.open('dateiabla
   r.onsuccess=()=>{db=r.result;res()};r.onerror=()=>res()}catch(e){res()}})}
 function done(t,res){t.oncomplete=()=>res();t.onerror=()=>res();t.onabort=()=>{toast('Speichern fehlgeschlagen – ist der Speicher voll?');res()}}
 function put(n){
-  if(n.id==='__logo'){return new Promise(res=>{if(!db)return res();try{const t=db.transaction('n','readwrite');t.objectStore('n').put(n);done(t,res)}catch(e){res()}})}
+  if(n.id==='__logo'||n.id==='__main'){return new Promise(res=>{if(!db)return res();try{const t=db.transaction('n','readwrite');t.objectStore('n').put(n);done(t,res)}catch(e){res()}})}
   const blob=n.blob;delete n.blob;delete n.txt;
   if(!kmD){const s0=sig.get(n.id);if(s0===undefined)kmAdd(n);else if(s0!==n.parent+'\0'+n.name)kmD=true}
   if(!db){if(blob)mem.set(n.id,blob);return Promise.resolve()}
   return new Promise(res=>{try{const t=db.transaction(blob?['n','b']:['n'],'readwrite');t.objectStore('n').put(n);if(blob)t.objectStore('b').put({id:n.id,blob});done(t,res)}catch(e){res()}});
+}
+function putMany(arr){
+  const items=arr.map(n=>{const blob=n.blob;delete n.blob;delete n.txt;
+    if(!kmD){const s0=sig.get(n.id);if(s0===undefined)kmAdd(n);else if(s0!==n.parent+'\0'+n.name)kmD=true}
+    return{n,blob}});
+  if(!db){items.forEach(({n,blob})=>{if(blob)mem.set(n.id,blob)});return Promise.resolve()}
+  return new Promise(res=>{try{
+    const t=db.transaction(['n','b'],'readwrite'),sn=t.objectStore('n'),sb=t.objectStore('b');
+    items.forEach(({n,blob})=>{sn.put(n);if(blob)sb.put({id:n.id,blob})});done(t,res);
+  }catch(e){res()}});
 }
 function del(id){
   kmD=true;indexed.delete(id);mem.delete(id);
@@ -286,7 +295,7 @@ function setMark(id,on){
   }
 }
 const topOf=a=>a.filter(i=>!a.some(o=>o!==i&&isDesc(i,o)));
-function render(){updScope();
+function render(){updScope();document.body.classList.toggle('hasmain',!!(mainId&&byId(mainId)));
   const t=$('#tree'),st=t.scrollTop,qv=norm(($('#q').value||'').trim());t.innerHTML='';$('#qw').classList.toggle('has',!!qv);
   const walk=(pid,d)=>kids(pid).forEach(n=>{
     const r=document.createElement('div');r.className='row'+((marked.has(n.id)||(!marked.size&&n.id===selId))?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'')+(cutd(n.id)?' cutd':'');
@@ -295,7 +304,7 @@ function render(){updScope();
     const tg=document.createElement('span');tg.className='tg'+(has?'':' none');tg.textContent=open.has(n.id)?'−':'+';
     tg.onclick=e=>{e.stopPropagation();open.has(n.id)?open.delete(n.id):open.add(n.id);render()};
     const ic=document.createElement('span');ic.innerHTML=isF?(open.has(n.id)?FOLDER_OPEN_SVG:FOLDER_SVG):extIcon(n.ext);
-    const nm=document.createElement('span');nm.className='nm';nm.textContent=n.name;
+    const nm=document.createElement('span');nm.className='nm';nm.textContent=(n.id===mainId?'★ ':'')+n.name;
     if(multi){const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};r.append(cb)}
     r.append(tg,ic,nm);
     {let lt=null,lx=0,ly=0;const lc=()=>{clearTimeout(lt);lt=null};
@@ -468,7 +477,7 @@ const chooseFolder=async()=>{
 };
 const getBl=it=>it.get?it.get():it.f;
 async function zipItems(file){
-  const z=await JSZip.loadAsync(file),out=[];
+  await ensureLib('JSZip');const z=await JSZip.loadAsync(file),out=[];
   z.forEach((path,en)=>{
     if(en.dir){const dp=path.split(/[\\/]/).filter(Boolean);if(dp.length&&!dp.some(q=>q==='__MACOSX'||q.startsWith('.')))out.push({folder:true,dirs:dp});return}
     const parts=path.split(/[\\/]/).filter(Boolean),name=parts.pop();
@@ -501,13 +510,14 @@ async function ingest(items,base){
   let over=true;
   if(conf.length===1)over=await ask(`Die Datei „${conf[0].f.name}“ gibt es in diesem Ordner schon.\n\nÜberschreiben?`,{ok:'Überschreiben'});
   else if(conf.length>1)over=await ask(`${conf.length} Dateien gibt es schon (z. B. „${conf[0].f.name}“).\n\nAlle überschreiben oder diese Dateien überspringen?`,{ok:'Alle überschreiben',cancel:'Überspringen'});
-  let added=0,replaced=0,k=0;
+  let added=0,replaced=0,k=0,batch=[],bsz=0;
   for(const it of ok){
     if(++k%5===1)setStatus('Hochladen … '+k+' von '+ok.length);
     const p=resolve(it.dirs,true),ex=exist(p,it.f.name),ext=it.f.name.split('.').pop().toLowerCase();
     if(ex){if(!over)continue;ex.blob=await getBl(it);ex.mime=it.f.type;delete ex.html;unindex(ex.id);await put(ex);replaced++;if(openFileId===ex.id)openFile(ex)}
-    else{const n={id:uid(),parent:p,type:'file',name:it.f.name,ext:ext.toLowerCase(),blob:await getBl(it),mime:it.f.type};nodes.push(n);await put(n);added++}
+    else{const n={id:uid(),parent:p,type:'file',name:it.f.name,ext:ext.toLowerCase(),blob:await getBl(it),mime:it.f.type};nodes.push(n);if(!kmD)kmAdd(n);batch.push(n);bsz+=(n.blob&&n.blob.size)||0;added++;if(batch.length>=100||bsz>=30e6){await putMany(batch);batch=[];bsz=0}}
   }
+  if(batch.length)await putMany(batch);
   open.add(base);setStatus('');render();usage();indexMissing();
   const m=[];if(fc)m.push(fc+' Ordner');if(added)m.push(added+' neu');if(replaced)m.push(replaced+' überschrieben');if(skipped)m.push(skipped+' nicht unterstützt');
   toast(m.length?m.join(', '):'Nichts hochgeladen');
@@ -762,13 +772,20 @@ async function toPlain(ext,blob){
   return smartDecode(buf);
 }
 
-const LIBURL={docx:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js',mammoth:'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js'};
+const LIBURL={JSZip:'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',docx:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js',mammoth:'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',pdfjsLib:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'};
+const LIBP={},LIBDEP={docx:['JSZip']};
 function ensureLib(k){
   if(window[k])return Promise.resolve();
-  return new Promise((res,rej)=>{const sc=document.createElement('script');sc.src=LIBURL[k];sc.onload=()=>window[k]?res():rej(new Error(k+' fehlt'));sc.onerror=()=>rej(new Error(k+' nicht ladbar'));document.head.appendChild(sc)});
+  if(LIBP[k])return LIBP[k];
+  return LIBP[k]=Promise.all((LIBDEP[k]||[]).map(ensureLib)).then(()=>new Promise((res,rej)=>{
+    const sc=document.createElement('script');sc.src=LIBURL[k];
+    sc.onload=()=>window[k]?res():rej(new Error(k+' fehlt'));
+    sc.onerror=()=>{delete LIBP[k];rej(new Error(k+' nicht ladbar'))};
+    document.head.appendChild(sc);
+  }));
 }
 async function docxText(blob){
-  const z=await JSZip.loadAsync(blob),f=z.file('word/document.xml');if(!f)throw new Error('word/document.xml fehlt');
+  await ensureLib('JSZip');const z=await JSZip.loadAsync(blob),f=z.file('word/document.xml');if(!f)throw new Error('word/document.xml fehlt');
   return (await f.async('string')).replace(/<w:tab\/>/g,'\t').replace(/<\/w:p>/g,'\n').replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&').trim();
 }
 async function openFile(n){
@@ -856,7 +873,7 @@ async function startEdit(n){
   else if(n.ext==='docx'){
     if(!await ask('Dieses Word-Dokument wurde nicht in der App erstellt. Beim Bearbeiten können Farben und komplexe Formatierungen verloren gehen.\n\nTrotzdem bearbeiten?',{ok:'Bearbeiten',cancel:'Abbrechen'}))return;
     const b=await blobOf(n.id);if(!b)return toast('Datei nicht lesbar.');
-    html=(await mammoth.convertToHtml({arrayBuffer:await b.arrayBuffer()})).value;
+    await ensureLib('mammoth');html=(await mammoth.convertToHtml({arrayBuffer:await b.arrayBuffer()})).value;
   }else return toast('Diese Datei kann nicht bearbeitet werden.');
   openEditor(n.name.replace(EXT,''),html,n);
 }
@@ -977,7 +994,7 @@ function buildPdf(root){
   }
   return doc.output('blob');
 }
-const mkBlob=async(fmt,ed)=>fmt==='pdf'?buildPdf(ed):fmt==='txt'?new Blob([ed.innerText],{type:'text/plain;charset=utf-8'}):await buildDocx(ed);
+const mkBlob=async(fmt,ed)=>{if(fmt==='pdf'){await ensureLib('jspdf');return buildPdf(ed)}if(fmt==='txt')return new Blob([ed.innerText],{type:'text/plain;charset=utf-8'});await ensureLib('JSZip');return buildDocx(ed)};
 async function saveDocx(asNew){
   const ed=$('#ed');if(!ed||!ed.textContent.trim())return toast('Das Dokument ist leer.');
   if(edNode&&!asNew&&byId(edNode.id)){
@@ -1100,6 +1117,7 @@ $('#bX').onclick=async()=>{
 let qTok=0,qd=null,idxP=null;
 const PDFW='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';let pwu=null;
 async function pdfWorker(){
+  await ensureLib('pdfjsLib');
   if(!pwu){try{const r=await fetch(PDFW);if(!r.ok)throw 0;pwu=URL.createObjectURL(new Blob([await r.text()],{type:'text/javascript'}))}catch(e){pwu=PDFW}}
   pdfjsLib.GlobalWorkerOptions.workerSrc=pwu;
 }
@@ -1109,8 +1127,8 @@ async function extractText(n){
   try{
     const blob=await blobOf(n.id);if(!blob)return;
     if(['txt','doc','rtf','html','htm'].includes(n.ext))t=await toPlain(n.ext,blob);
-    else if(n.ext==='docx'&&window.mammoth)t=(await mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()})).value;
-    else if(n.ext==='pdf'&&window.pdfjsLib){
+    else if(n.ext==='docx'){await ensureLib('mammoth');t=(await mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()})).value}
+    else if(n.ext==='pdf'){
       await pdfWorker();
       const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
       for(let i=1;i<=pdf.numPages;i++){const c=await (await pdf.getPage(i)).getTextContent();t+=c.items.map(x=>x.str).join(' ')+' '}
@@ -1121,7 +1139,7 @@ async function extractText(n){
 function indexMissing(){
   if(idxP)return idxP;
   idxP=(async()=>{
-    const todo=nodes.filter(n=>n.type==='file'&&!indexed.has(n.id));let i=0;
+    const todo=nodes.filter(n=>n.type==='file'&&!indexed.has(n.id));if(mainId)todo.sort((a,b)=>(isDesc(b.id,mainId)?1:0)-(isDesc(a.id,mainId)?1:0));let i=0;
     for(const n of todo){if(!byId(n.id))continue;setStatus('Indexiere Dateiinhalte … '+(++i)+' von '+todo.length);await extractText(n)}
     setStatus('');
   })().finally(()=>{idxP=null});
@@ -1192,6 +1210,7 @@ $('#tree').addEventListener('contextmenu',e=>{
   if(n){
     menuAdd('✎ Umbenennen','F2',()=>$('#bR').click());
     menuAdd('↪ Verschieben …','',()=>$('#bV').click());
+    if(n.type==='folder')menuAdd(mainId===n.id?'☆ Hauptordner aufheben':'★ Als Hauptordner','',()=>$('#bH').click());
     if(n.type==='file')menuAdd('⬇ Herunterladen','',()=>$('#bX').click());
     menuAdd('🗑 Löschen','Entf',()=>$('#bD').click());
   }
@@ -1334,12 +1353,29 @@ function applyFontSize(pt){
   edDirty=true;
 }
 
-(async()=>{await openDB();const all=await loadAll();logo=all.find(n=>n.id==='__logo')||null;nodes=all.filter(n=>n.id!=='root'&&n.id!=='__logo');
+function gotoMain(quiet){
+  const m=mainId&&byId(mainId);
+  if(!m){if(!quiet)toast('Noch kein Hauptordner festgelegt.');return}
+  const keep=new Set(['root']);let x=m;while(x){keep.add(x.id);x=byId(x.parent)}
+  open.clear();keep.forEach(k=>open.add(k));selId=m.id;lastOpenParent=m.id;render();
+  const el=document.querySelector('.row.cur');if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'});
+}
+$('#hm').onclick=()=>gotoMain();
+$('#bH').onclick=()=>{
+  const n=byId(selId),f=n?(n.type==='folder'?n:byId(n.parent)):null;
+  if(!f||f.id==='root')return toast('Bitte zuerst den Ordner antippen, der dein Hauptordner sein soll.');
+  if(mainId===f.id){mainId=null;del('__main');toast('Hauptordner aufgehoben')}
+  else{mainId=f.id;put({id:'__main',folder:f.id});toast('Hauptordner: '+f.name)}
+  render();
+};
+(async()=>{await openDB();const all=await loadAll();logo=all.find(n=>n.id==='__logo')||null;const mrec=all.find(n=>n.id==='__main');mainId=mrec?mrec.folder:null;nodes=all.filter(n=>n.id!=='root'&&n.id!=='__logo'&&n.id!=='__main');
   nodes.forEach(n=>{if(n.blob||n.txt!==undefined)put(n)});
-  await loadKeys();applyLogo();render();usage();
+  await loadKeys();applyLogo();if(mainId&&byId(mainId))gotoMain(true);else render();usage();
+  setTimeout(()=>{ensureLib('docx').catch(()=>{})},1200);
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}})();
 </script>
 <script>
+if('serviceWorker' in navigator){navigator.serviceWorker.addEventListener('message',e=>{if(e.data&&e.data.type==='update')toast('Neue Version verfügbar – App einmal komplett beenden und neu öffnen')})}
 if('serviceWorker' in navigator&&location.protocol==='https:'){
   addEventListener('load',()=>{
     navigator.serviceWorker.register('sw.js').catch(()=>{});
