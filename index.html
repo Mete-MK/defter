@@ -109,10 +109,8 @@ body.sel #sb{display:flex}
 #sb button{padding:5px 9px;font-size:15px}
 .cb{width:18px;height:18px}
 .row{-webkit-touch-callout:none}
-#hm{display:none;min-width:40px;padding:8px 10px;font-size:15px;background:#fff3a8;border-color:#e3cb55;color:#333}
-body.hasmain #hm{display:block}
-.stx{margin-left:auto;flex:none;min-width:30px;text-align:center;font-size:17px;line-height:26px;color:#9a9a9a;cursor:pointer}
-.stx.on{color:#e0a800}
+#hm{min-width:42px;padding:8px 10px;font-size:17px;line-height:1;background:var(--pane);color:#8a8a8a;border-color:var(--bd)}
+#hm.on{background:#fff3a8;border-color:#e3cb55;color:#b07d00}
 #sc button.off{opacity:.45}
 .fi{flex:none;vertical-align:middle}
 .txtv{white-space:pre-wrap;overflow-wrap:anywhere;font:18px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -137,8 +135,8 @@ body.sq #sc{display:flex}
 <body>
 <div id="left">
   <div id="logoL"></div>
-  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><button id="hm" title="Zum Hauptordner springen">★</button><span id="qw"><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"><button id="qc2" title="Suche schließen" aria-label="Suche schließen">✕</button></span></div>
-  <div id="sc"><span>Suchen in:</span><button id="scD">DEFTER</button><button id="scM">HAUPTORDNER</button><button id="scC" class="on">AKTUELLER-ORDNER</button></div>
+  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><button id="hm" title="Hauptordner">☆</button><span id="qw"><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"><button id="qc2" title="Suche schließen" aria-label="Suche schließen">✕</button></span></div>
+  <div id="sc"><span>Suchen in:</span><button id="scD">DEFTER</button><button id="scM">HAUPTORDNER</button><button id="scC" class="on">AKTUELLER ORDNER</button></div>
   <div id="qs"></div>
   <div id="tools">
   <div class="bar">
@@ -228,7 +226,8 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 20';
+const APPV='Version 21';
+const dat=n=>n+(n===1?' Datei':' Dateien'),eintr=n=>n+(n===1?' Eintrag':' Einträge');
 let mainId=null;
 const setStatus=m=>{$('#qs').textContent=m};
 /* Suche: Groß/Klein und Sonderzeichen gleichsetzen (ç=c, ğ=g, ş=s, ı/İ=i, ö=o, ü=u, ä=a, ß=s ...) – Länge bleibt gleich */
@@ -298,7 +297,7 @@ function setMark(id,on){
   }
 }
 const topOf=a=>a.filter(i=>!a.some(o=>o!==i&&isDesc(i,o)));
-function render(){updScope();document.body.classList.toggle('hasmain',!!(mainId&&byId(mainId)));
+function render(){updScope();{const on=!!(mainId&&byId(mainId)&&mainId===curFolder()),h=$('#hm');h.classList.toggle('on',on);h.textContent=on?'★':'☆';h.title=on?'Hauptordner aktiv – Tippen hebt ihn auf, gedrückt halten springt zu ihm':'Diesen Ordner als Hauptordner festlegen (gedrückt halten: zum Hauptordner springen)'}
   const t=$('#tree'),st=t.scrollTop,qv=norm(($('#q').value||'').trim());t.innerHTML='';$('#qw').classList.toggle('has',!!qv);
   const walk=(pid,d)=>kids(pid).forEach(n=>{
     const r=document.createElement('div');r.className='row'+((marked.has(n.id)||(!marked.size&&n.id===selId))?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'')+(cutd(n.id)?' cutd':'');
@@ -310,11 +309,6 @@ function render(){updScope();document.body.classList.toggle('hasmain',!!(mainId&
     const nm=document.createElement('span');nm.className='nm';nm.textContent=(n.id===mainId?'★ ':'')+n.name;
     if(multi){const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};r.append(cb)}
     r.append(tg,ic,nm);
-    if(isF&&(n.id===mainId||n.id===curFolder())){
-      const sx=document.createElement('span');sx.className='stx'+(n.id===mainId?' on':'');sx.textContent=n.id===mainId?'★':'☆';
-      sx.title=n.id===mainId?'Hauptordner (Klick hebt auf)':'Als Hauptordner festlegen';
-      sx.onclick=e=>{e.stopPropagation();toggleMain(n.id)};r.append(sx);
-    }
     {let lt=null,lx=0,ly=0;const lc=()=>{clearTimeout(lt);lt=null};
       r.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;lx=e.clientX;ly=e.clientY;lc();lt=setTimeout(()=>{lt=null;lpAt=Date.now();if(!multi)toast('Auswahlmodus: Einträge antippen, ✕ beendet ihn');multi=true;setMark(n.id,true);render()},420)});
       r.addEventListener('pointermove',e=>{if(lt&&Math.hypot(e.clientX-lx,e.clientY-ly)>10)lc()});
@@ -344,7 +338,7 @@ function render(){updScope();document.body.classList.toggle('hasmain',!!(mainId&
   $('#bPs').textContent=clip.ids.length?'📋 Einfügen ('+clip.ids.length+')':'📋 Einfügen';
   t.scrollTop=st;
   const s=byId(selId);let p=[],c=s;while(c&&c.id!=='root'){p.unshift(c.name);c=byId(c.parent)}
-  $('#path').textContent=marked.size?marked.size+' Eintrag/Einträge markiert – Löschen, Verschieben und Umbenennen beziehen sich darauf':(s?'Ausgewählt: /'+p.join('/'):'Nichts ausgewählt')+usageTxt+' · '+APPV;
+  $('#path').textContent=marked.size?eintr(marked.size)+' markiert – Löschen, Verschieben und Umbenennen beziehen sich darauf':(s?'Ausgewählt: /'+p.join('/'):'Nichts ausgewählt')+usageTxt+' · '+APPV;
 }
 function targetFolder(){const s=byId(selId);if(!s)return 'root';return s.type==='folder'?s.id:s.parent}
 
@@ -360,17 +354,17 @@ $('#sbd').onclick=()=>$('#bD').click();$('#sbc').onclick=()=>$('#bCp').click();$
 $('#tree').addEventListener('click',e=>{if(e.target===e.currentTarget&&Date.now()-lpAt>700)releaseSel()});
 $('#bD').onclick=async()=>{
   const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
-  if(!tg.length)return toast('Bitte zuerst einen Eintrag markieren (mehrere: Kästchen anhaken).');
+  if(!tg.length)return toast('Bitte zuerst einen Eintrag markieren (mehrere: lange auf einen Eintrag drücken).');
   const ids=new Set();const col=i=>{ids.add(i);kids(i).forEach(x=>col(x.id))};tg.forEach(col);
   const all=[...ids].map(byId).filter(Boolean),fi=all.filter(x=>x.type==='file').length,fo=all.length-fi;
   const names=tg.map(i=>byId(i)).filter(Boolean).map(x=>(x.type==='folder'?'📁 ':'📄 ')+x.name);
   const shown=names.slice(0,6).join('\n')+(names.length>6?'\n… und '+(names.length-6)+' weitere':'');
-  const ok=await ask('Wirklich löschen?\n\n'+shown+'\n\nInsgesamt: '+fo+' Ordner, '+fi+' Datei(en). Das kann nicht rückgängig gemacht werden.',{ok:'Löschen',cancel:'Abbrechen'});
+  const ok=await ask('Wirklich löschen?\n\n'+shown+'\n\nInsgesamt: '+fo+' Ordner, '+dat(fi)+'. Das kann nicht rückgängig gemacht werden.',{ok:'Löschen',cancel:'Abbrechen'});
   if(!ok)return;
   nodes=nodes.filter(x=>!ids.has(x.id));ids.forEach(del);
   if(ids.has(openFileId)){openFileId=null;$('#tb')?.remove();clearView()}
   if(ids.has(selId))selId='root';
-  marked.clear();render();toast('Gelöscht: '+fo+' Ordner, '+fi+' Datei(en)');
+  marked.clear();render();toast('Gelöscht: '+fo+' Ordner, '+dat(fi));
 };
 /* ---------- Verschieben ---------- */
 const isDesc=(id,anc)=>{let x=byId(id);while(x){if(x.id===anc)return true;x=byId(x.parent)}return false};
@@ -420,7 +414,7 @@ function pickFolder(targets){
 }
 $('#bV').onclick=async()=>{
   const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
-  if(!tg.length)return toast('Bitte zuerst Ordner oder Dateien markieren (mehrere: Kästchen anhaken).');
+  if(!tg.length)return toast('Bitte zuerst Ordner oder Dateien markieren (mehrere: lange auf einen Eintrag drücken).');
   const dest=await pickFolder(tg);if(dest===null)return;
   await moveItems(tg,dest);
 };
@@ -463,7 +457,7 @@ async function nativeFolder(){
     const items=(r.entries||[]).map(e=>{const parts=e.path.split('/');if(e.dir)return{folder:true,dirs:parts};parts.pop();
       return{f:{name:e.name,type:''},dirs:parts,get:async()=>{const x=await fcall('read',{uri:e.uri});const bin=atob(x.data),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u])}}});
     setStatus('');
-    if(!items.length)return toast('Keine DOCX-, PDF- oder TXT-Dateien im Ordner gefunden.');
+    if(!items.length)return toast('Im Ordner wurden keine unterstützten Dateien gefunden (Word, PDF, Text, HTML, RTF, MP3).');
     qAdd(items);
   }catch(e){setStatus('');if(!/abgebrochen/.test(String((e&&e.message)||e)))toast('Ordner konnte nicht gelesen werden. Wurde setup-android ausgeführt?')}
 }
@@ -537,10 +531,10 @@ let queue=[],qBase='root';
 function qRender(){
   const g={};queue.forEach(it=>{const k=it.dirs[0]||'(einzelne Dateien)';g[k]=(g[k]||0)+(it.folder?0:1)});
   $('#ql').innerHTML=Object.keys(g).length?'':'<div style="color:var(--mut)">Noch kein Ordner gewählt.</div>';
-  Object.entries(g).forEach(([k,c])=>{const d=document.createElement('div');d.innerHTML='<span>'+FOLDER_SVG+' </span><span style="color:var(--mut)">'+c+' Datei(en)</span>';d.firstChild.append(k);$('#ql').appendChild(d)});
+  Object.entries(g).forEach(([k,c])=>{const d=document.createElement('div');d.innerHTML='<span>'+FOLDER_SVG+' </span><span style="color:var(--mut)">'+dat(c)+'</span>';d.firstChild.append(k);$('#ql').appendChild(d)});
   const b=byId(qBase);let p=[],x=b;while(x&&x.id!=='root'){p.unshift(x.name);x=byId(x.parent)}
-  $('#qt').textContent='Ziel: /'+p.join('/')+' · '+Object.keys(g).length+' Ordner, '+queue.filter(i=>!i.folder).length+' Datei(en)';
-  $('#qg').textContent='Alle hochladen'+(queue.length?' ('+queue.filter(i=>!i.folder).length+' Dateien)':'');
+  $('#qt').textContent='Ziel: /'+p.join('/')+' · '+Object.keys(g).length+' Ordner, '+dat(queue.filter(i=>!i.folder).length);
+  $('#qg').textContent='Alle hochladen'+(queue.length?' ('+dat(queue.filter(i=>!i.folder).length)+')':'');
 }
 function qAdd(list){
   const key=it=>it.dirs.join('/')+'/'+(it.folder?'':it.f.name)+(it.folder?'/':'');
@@ -1079,7 +1073,7 @@ function clipSet(cut){
   const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
   if(!tg.length)return toast('Bitte zuerst Ordner oder Dateien markieren.');
   clip={ids:tg,mode:cut?'cut':'copy'};render();
-  toast(tg.length+' Eintrag/Einträge '+(cut?'ausgeschnitten':'kopiert')+' – Zielordner wählen und „Einfügen“');
+  toast(eintr(tg.length)+' '+(cut?'ausgeschnitten':'kopiert')+' – Zielordner wählen und „Einfügen“');
 }
 $('#bCp').onclick=()=>clipSet(false);
 $('#bCt').onclick=()=>clipSet(true);
@@ -1099,7 +1093,7 @@ $('#bPs').onclick=async()=>{
   const cp=async(id,par)=>{const n=byId(id),o={...n,id:uid(),parent:par,name:uniq(par,n.name,n.type)};if(n.type==='file')o.blob=await blobOf(id);nodes.push(o);await put(o);c++;
     if(n.type==='folder')for(const k of kids(id).map(x=>x.id))await cp(k,o.id)};
   for(const i of ids)await cp(i,dest);
-  open.add(dest);render();if(c)toast(c+' Eintrag/Einträge eingefügt');
+  open.add(dest);render();if(c)toast(eintr(c)+' eingefügt');
 };
 
 /* ---------- Herunterladen ---------- */
@@ -1382,7 +1376,10 @@ function gotoMain(quiet){
   open.clear();keep.forEach(k=>open.add(k));selId=m.id;lastOpenParent=m.id;render();
   const el=document.querySelector('.row.cur');if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'});
 }
-$('#hm').onclick=()=>gotoMain();
+{let t=null,lp=0;const h=$('#hm');
+  h.addEventListener('pointerdown',()=>{clearTimeout(t);t=setTimeout(()=>{t=null;lp=Date.now();gotoMain()},550)});
+  ['pointerup','pointerleave','pointercancel'].forEach(ev=>h.addEventListener(ev,()=>{clearTimeout(t);t=null}));
+  h.onclick=()=>{if(Date.now()-lp<700)return;const c=curFolder();if(!c||c==='root'||!byId(c))return toast('Öffne zuerst den Ordner, der dein Hauptordner sein soll.');toggleMain(c)}}
 function toggleMain(id){
   const f=byId(id);if(!f||f.type!=='folder')return;
   if(mainId===id){mainId=null;del('__main');toast('Hauptordner aufgehoben');if(scope.main){scope.main=false;if(!scope.dw)scope.cur=true}}
