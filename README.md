@@ -1,38 +1,30 @@
-# Defter – Android-Projekt (Capacitor)
+# Defter als Web-App für iPad und iPhone (offline)
 
-## Voraussetzungen (einmalig)
-- Node.js 18 oder neuer (https://nodejs.org, LTS-Version)
-- Android Studio (aktuelle Version)
+Die App läuft komplett im Gerät. Nach der einmaligen Einrichtung braucht sie kein Internet mehr.
 
-## APK bauen
-Öffne ein Terminal (Windows: Eingabeaufforderung/PowerShell) im entpackten Ordner `defter-android` und führe nacheinander aus:
+## 1. Ordner ins Internet stellen (einmalig, nur zum Installieren)
+Die Dateien in diesem Ordner müssen einmal unter einer https-Adresse erreichbar sein. Zwei einfache Wege:
+- **Netlify:** auf app.netlify.com/drop den ganzen Ordner "defter-pwa" ins Browserfenster ziehen. Du bekommst einen Link. Mit einem kostenlosen Konto bleibt die Seite dauerhaft bestehen (ohne Konto wird sie nach kurzer Zeit gelöscht).
+- **GitHub Pages:** Dateien in ein neues GitHub-Repository hochladen, unter Settings > Pages aktivieren.
 
-    npm install
-    npx cap add android
-    node scripts/setup-android.js
-    npx cap sync android
-    npx cap open android
+## 2. Auf dem iPad/iPhone installieren
+1. Den Link in **Safari** öffnen (nicht in Chrome).
+2. Teilen-Symbol > **Zum Home-Bildschirm** > Hinzufügen.
+3. Die App **über das neue Symbol** starten, solange du online bist. Warte, bis "Offline-Modus bereit" erscheint.
+4. Test: Flugmodus einschalten, App vom Home-Bildschirm neu starten. Sie muss normal laufen.
 
-`npm install` lädt die Bibliotheken und kopiert sie automatisch nach `www/lib` (offline nutzbar).
-`npx cap open android` startet Android Studio mit dem Projekt.
+## 3. Songtexte hochladen
+- Immer nur über die App vom Home-Bildschirm hochladen, nicht im Safari-Tab.
+- **Ganze Ordner mit Unterordnern:** iPadOS erlaubt Web-Apps keine Ordnerauswahl. Deshalb als ZIP: In der Dateien-App den Ordner gedrückt halten > **Komprimieren**. Dann in der App auf **"Ordner (ZIP)"** tippen und die ZIP-Datei wählen. Alle Ordner und Unterordner bleiben erhalten. Auch einzelne ZIP-Dateien über "Dateien" funktionieren.
+- Eine ZIP-Datei wird beim Entpacken ganz in den Arbeitsspeicher geladen. Packe große Sammlungen deshalb in mehrere ZIP-Dateien von je höchstens 200 bis 300 MB.
+- Lade in Portionen hoch (zum Beispiel 100 bis 200 MB pro Durchgang), nicht 1 GB auf einmal. Unten in der Ordnerliste steht, wie viel Speicher belegt ist.
+- Nach dem Hochladen indexiert die App die Inhalte im Hintergrund, damit die Volltextsuche funktioniert (Statuszeile unter dem Suchfeld). Das darf einige Minuten dauern. Bleibe so lange in der App.
+- Teste zuerst mit einem kleinen Teil, bevor du alles hochlädst.
 
-In Android Studio:
-1. Warten, bis die Gradle-Synchronisierung unten fertig ist (beim ersten Mal dauert das einige Minuten).
-2. Menü **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
-3. Unten rechts erscheint „APK(s) generated“ > **locate**. Die Datei heißt `app-debug.apk`
-   (Pfad: `android/app/build/outputs/apk/debug/`).
+## Wichtig
+- Die Daten liegen nur auf diesem Gerät. iPad und iPhone haben getrennte Ablagen. Sichere wichtige Dateien zusätzlich (Original behalten oder "Herunterladen").
+- iOS entscheidet über den Speicherplatz für Web-Apps. Für Apps vom Home-Bildschirm ist er großzügig, eine feste Zusage gibt es aber nicht. Beim Löschen der App gehen die Daten verloren.
+- Updates: Geänderte Dateien (index.html und sw.js) bei GitHub hochladen, vorhandene werden ersetzt. In sw.js muss die Versionszahl höher sein als vorher (jetzt `defter-v20`, beim nächsten Mal v21). Danach die App auf dem iPad mit Internet zweimal komplett beenden und neu öffnen.
 
-## Auf dem Tablet installieren
-1. `app-debug.apk` aufs Tablet übertragen (USB-Kabel, Cloud, E-Mail).
-2. Datei antippen, „Installation aus unbekannten Quellen“ für die jeweilige App erlauben, installieren.
-
-## Später ändern
-Nach Änderungen an `www/index.html`: `npm run sync`, dann in Android Studio erneut „Build APK(s)“.
-
-## Hinweise
-- Ordner-Upload: Mit "⬆ Ordner" wählst du ganze Ordner samt Unterordnern und leeren Ordnern über die Android-Ordnerauswahl. Das klappt nur, wenn `node scripts/setup-android.js` ausgeführt wurde (nach `npx cap add android`).
-- „📤 Exportieren“ öffnet das Android-Teilen-Menü (z. B. „In Drive speichern“, „Dateien“).
-- Die Ablage liegt im Speicher der App. Beim Deinstallieren werden die Daten gelöscht.
-
-## App-Name
-Der Name unter dem App-Symbol steht in `capacitor.config.json` (`appName`). Wurde `npx cap add android` schon ausgeführt, ändere ihn zusätzlich in `android/app/src/main/res/values/strings.xml` (`app_name`, `title_activity_main`).
+## Neuer App-Name
+Der Name auf dem Home-Bildschirm wird beim Hinzufügen festgelegt. Lösche das alte Symbol (gedrückt halten > App entfernen > **Vom Home-Bildschirm entfernen**) und füge die App danach neu hinzu. Die gespeicherten Dateien bleiben dabei erhalten, solange du die Web-App-Daten nicht löschst.

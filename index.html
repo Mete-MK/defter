@@ -111,13 +111,16 @@ body.sel #sb{display:flex}
 .row{-webkit-touch-callout:none}
 #hm{display:none;min-width:40px;padding:8px 10px;font-size:15px;background:#fff3a8;border-color:#e3cb55;color:#333}
 body.hasmain #hm{display:block}
+.stx{margin-left:auto;flex:none;min-width:30px;text-align:center;font-size:17px;line-height:26px;color:#9a9a9a;cursor:pointer}
+.stx.on{color:#e0a800}
+#sc button.off{opacity:.45}
 .fi{flex:none;vertical-align:middle}
 .txtv{white-space:pre-wrap;overflow-wrap:anywhere;font:18px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 .note{color:var(--mut);font-size:12px;margin-bottom:8px}
 .paper.html{background:#fff;color:#000;font:17px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 .paper.html img{max-width:100%;height:auto}.paper.html table{border-collapse:collapse}
 #tb select{font:inherit;padding:7px 8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx)}
-#sc{display:none;align-items:center;gap:6px;padding:3px 8px;border-bottom:1px solid var(--bd);font-size:12px;color:var(--mut)}
+#sc{display:none;flex-wrap:wrap;align-items:center;gap:6px;padding:3px 8px;border-bottom:1px solid var(--bd);font-size:12px;color:var(--mut)}
 body.sq #sc{display:flex}
 #sc button{padding:2px 10px;font-size:11px;border-radius:10px;background:#efefef;color:#777;border:1px solid #dcdcdc}
 #sc button.on{background:#fff3a8;border-color:#e3cb55;color:#333;font-weight:600}
@@ -135,7 +138,7 @@ body.sq #sc{display:flex}
 <div id="left">
   <div id="logoL"></div>
   <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><button id="hm" title="Zum Hauptordner springen">★</button><span id="qw"><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"><button id="qc2" title="Suche schließen" aria-label="Suche schließen">✕</button></span></div>
-  <div id="sc"><span>Suchen in:</span><button id="scD">DEFTER</button><button id="scO">ORDNER</button><span id="scl"></span></div>
+  <div id="sc"><span>Suchen in:</span><button id="scD">DEFTER</button><button id="scM">HAUPTORDNER</button><button id="scC" class="on">AKTUELLER-ORDNER</button></div>
   <div id="qs"></div>
   <div id="tools">
   <div class="bar">
@@ -225,7 +228,7 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 19';
+const APPV='Version 20';
 let mainId=null;
 const setStatus=m=>{$('#qs').textContent=m};
 /* Suche: Groß/Klein und Sonderzeichen gleichsetzen (ç=c, ğ=g, ş=s, ı/İ=i, ö=o, ü=u, ä=a, ß=s ...) – Länge bleibt gleich */
@@ -307,6 +310,11 @@ function render(){updScope();document.body.classList.toggle('hasmain',!!(mainId&
     const nm=document.createElement('span');nm.className='nm';nm.textContent=(n.id===mainId?'★ ':'')+n.name;
     if(multi){const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};r.append(cb)}
     r.append(tg,ic,nm);
+    if(isF&&(n.id===mainId||n.id===curFolder())){
+      const sx=document.createElement('span');sx.className='stx'+(n.id===mainId?' on':'');sx.textContent=n.id===mainId?'★':'☆';
+      sx.title=n.id===mainId?'Hauptordner (Klick hebt auf)':'Als Hauptordner festlegen';
+      sx.onclick=e=>{e.stopPropagation();toggleMain(n.id)};r.append(sx);
+    }
     {let lt=null,lx=0,ly=0;const lc=()=>{clearTimeout(lt);lt=null};
       r.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')return;lx=e.clientX;ly=e.clientY;lc();lt=setTimeout(()=>{lt=null;lpAt=Date.now();if(!multi)toast('Auswahlmodus: Einträge antippen, ✕ beendet ihn');multi=true;setMark(n.id,true);render()},420)});
       r.addEventListener('pointermove',e=>{if(lt&&Math.hypot(e.clientX-lx,e.clientY-ly)>10)lc()});
@@ -314,7 +322,7 @@ function render(){updScope();document.body.classList.toggle('hasmain',!!(mainId&
     r.onclick=e=>{
       if(Date.now()-lpAt<700)return;
       if(multi||e.ctrlKey||e.metaKey){multi=true;setMark(n.id,!marked.has(n.id));render();return}
-      selId=n.id;
+      selId=n.id;if(isF)lastOpenParent=n.id;
       if(isF){
         if(e.shiftKey||open.has(n.id)){open.has(n.id)?open.delete(n.id):open.add(n.id)}
         else{const keep=new Set(['root']);let x=n;while(x){keep.add(x.id);x=byId(x.parent)}open.clear();keep.forEach(k=>open.add(k))}
@@ -329,7 +337,7 @@ function render(){updScope();document.body.classList.toggle('hasmain',!!(mainId&
   });
   const root=document.createElement('div');root.className='row'+(selId==='root'&&!marked.size?' sel':'');
   root.innerHTML='<span class="tg" style="visibility:hidden">+</span>'+FOLDER_OPEN_SVG+'<span class="nm"><b>Defter</b></span>';
-  root.onclick=()=>{selId='root';render()};dropTarget(root,'root');t.appendChild(root);
+  root.onclick=()=>{selId='root';lastOpenParent=null;render()};dropTarget(root,'root');t.appendChild(root);
   if(qv)searchList(t,qv);else walk('root',1);
   $('#bD').textContent=marked.size?'🗑 Löschen ('+marked.size+')':'🗑 Löschen';updTT();
   $('#bM').textContent=multi?'✕ Auswahl beenden':'☑ Auswählen';document.body.classList.toggle('sel',multi);$('#sbn').textContent=marked.size+' ausgewählt';
@@ -1164,10 +1172,10 @@ async function runSearch(){
     contentHits=await scanText(q,tok,okId);if(tok!==qTok)return;render();
   }
 }
-function clearSearch(){$('#q').value='';scKeep=false;scope.manual=null;scope.mode='folder';document.body.classList.remove('sq');qTok++;contentHits=new Map();setStatus('');render()}
+function clearSearch(){$('#q').value='';scKeep=false;scope.dw=false;scope.main=false;scope.cur=true;snap=null;document.body.classList.remove('sq');qTok++;contentHits=new Map();setStatus('');render()}
 $('#qc2').onclick=clearSearch;
 $('#q').addEventListener('keydown',e=>{if(e.key==='Escape')clearSearch()});
-$('#q').oninput=()=>{contentHits=new Map();render();clearTimeout(qd);qd=setTimeout(runSearch,400)};
+$('#q').oninput=()=>{contentHits=new Map();if(!$('#q').value.trim())snap=null;else if(!snap)snap=scopeFolders();render();clearTimeout(qd);qd=setTimeout(runSearch,400)};
 function searchList(t,q){
   const res=nodes.map(n=>{if(!inScope(n))return null;const h=contentHits.get(n.id);return(norm(n.name).includes(q)||h)?{n,h}:null}).filter(Boolean).sort((a,b)=>a.n.name.localeCompare(b.n.name,'de'));
   if(!res.length){const d=document.createElement('div');d.className='empty';d.style.marginTop='30px';d.textContent='Keine Treffer.';t.appendChild(d);return}
@@ -1186,7 +1194,7 @@ function searchList(t,q){
     if(multi)r.append(cb);r.append(ic,box);
     r.onclick=()=>{if(Date.now()-lpAt<700)return;if(multi){setMark(n.id,!marked.has(n.id));render();return}selId=n.id;
       if(n.type==='file')openFile(n);
-      else{$('#q').value='';setStatus('');let x=byId(n.id);while(x&&x.id!=='root'){open.add(x.id);x=byId(x.parent)}render()}};
+      else{lastOpenParent=n.id;snap=null;$('#q').value='';setStatus('');let x=byId(n.id);while(x&&x.id!=='root'){open.add(x.id);x=byId(x.parent)}render()}};
     t.appendChild(r);
   });
   if(res.length>500){const d=document.createElement('div');d.className='empty';d.style.marginTop='10px';d.textContent='Nur die ersten 500 von '+res.length+' Treffern – Suchbegriff genauer fassen.';t.appendChild(d)}
@@ -1304,20 +1312,34 @@ $('#mpn').onclick=()=>stepAudio(1);$('#mpp').onclick=()=>stepAudio(-1);
 $('#mpx').onclick=()=>{const a=$('#au');a.pause();a.removeAttribute('src');a.load();$('#mp').style.display='none';playId=null};
 
 /* ---------- Suchbereich: DEFTER (alles) oder ORDNER (mehrere wählbar) ---------- */
-const scope={mode:'folder',manual:null};let lastOpenParent=null,scKeep=false;
+const scope={dw:false,main:false,cur:true};let lastOpenParent=null,scKeep=false,snap=null;
 const curFolder=()=>(lastOpenParent&&byId(lastOpenParent))?lastOpenParent:(targetFolder()||'root');
-const scopeFolders=()=>scope.manual&&scope.manual.size?[...scope.manual]:[curFolder()];
-const inScope=n=>scope.mode==='all'||scopeFolders().some(f=>f==='root'||isDesc(n.id,f));
+const scopeFolders=()=>{const f=[];if(scope.main&&mainId&&byId(mainId))f.push(mainId);if(scope.cur||!f.length)f.push(curFolder());return f};
+const inScope=n=>scope.dw||(snap||scopeFolders()).some(f=>f==='root'||isDesc(n.id,f));
 function updScope(){
-  $('#scD').classList.toggle('on',scope.mode==='all');$('#scO').classList.toggle('on',scope.mode==='folder');
-  const fs=scope.mode==='folder'?scopeFolders().map(f=>f==='root'?'Defter':(byId(f)||{name:'?'}).name):[];
-  $('#scl').textContent=fs.length?fs[0]+(fs.length>1?' +'+(fs.length-1):''):'';
+  $('#scD').classList.toggle('on',scope.dw);
+  $('#scM').classList.toggle('on',!scope.dw&&scope.main&&!!mainId);
+  $('#scC').classList.toggle('on',!scope.dw&&(scope.cur||!(scope.main&&mainId)));
+  $('#scM').classList.toggle('off',!mainId);
+  $('#scM').title=mainId?'Im Hauptordner suchen':'Zuerst einen Hauptordner mit dem Stern festlegen';
+  const cf=curFolder();$('#scC').title='Aktueller Ordner: '+(cf==='root'?'Defter':(byId(cf)||{name:'?'}).name);
 }
 const rerunSearch=()=>{render();runSearch()};
+function setScope(k){
+  if(k==='dw'){scope.dw=!scope.dw;if(!scope.dw){scope.main=false;scope.cur=true}}
+  else if(k==='main'){
+    if(!mainId)return toast('Lege zuerst mit dem Stern ★ einen Hauptordner fest.');
+    if(scope.dw){scope.dw=false;scope.main=true;scope.cur=false}
+    else{scope.main=!scope.main;if(!scope.main&&!scope.cur)scope.cur=true}
+  }else{
+    if(scope.dw){scope.dw=false;scope.cur=true;scope.main=false}
+    else{scope.cur=!scope.cur;if(!scope.cur&&!(scope.main&&mainId))scope.cur=true}
+  }
+  scKeep=true;snap=$('#q').value.trim()?scopeFolders():null;rerunSearch();
+}
 $('#q').addEventListener('focus',()=>{document.body.classList.add('sq');updScope()});
 $('#q').addEventListener('blur',()=>setTimeout(()=>{if(!$('#q').value&&!scKeep)document.body.classList.remove('sq')},300));
-$('#scD').onclick=()=>{scKeep=true;scope.mode='all';rerunSearch()};
-$('#scO').onclick=async()=>{scKeep=true;const r=await pickFolders(new Set(scopeFolders()));if(r){scope.mode='folder';scope.manual=r.size?r:null}rerunSearch()};
+$('#scD').onclick=()=>setScope('dw');$('#scM').onclick=()=>setScope('main');$('#scC').onclick=()=>setScope('cur');
 function pickFolders(init){
   return new Promise(res=>{
     const sel=new Set(init),mnf=$('#mnf');mnf.style.display='none';
@@ -1361,12 +1383,17 @@ function gotoMain(quiet){
   const el=document.querySelector('.row.cur');if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'});
 }
 $('#hm').onclick=()=>gotoMain();
+function toggleMain(id){
+  const f=byId(id);if(!f||f.type!=='folder')return;
+  if(mainId===id){mainId=null;del('__main');toast('Hauptordner aufgehoben');if(scope.main){scope.main=false;if(!scope.dw)scope.cur=true}}
+  else{mainId=id;put({id:'__main',folder:id});toast('Hauptordner: '+f.name)}
+  snap=$('#q').value.trim()?scopeFolders():null;
+  render();if($('#q').value.trim())runSearch();
+}
 $('#bH').onclick=()=>{
-  const n=byId(selId),f=n?(n.type==='folder'?n:byId(n.parent)):null;
+  const n=byId(selId),f=n?(n.type==='folder'?n:byId(n.parent)):byId(curFolder());
   if(!f||f.id==='root')return toast('Bitte zuerst den Ordner antippen, der dein Hauptordner sein soll.');
-  if(mainId===f.id){mainId=null;del('__main');toast('Hauptordner aufgehoben')}
-  else{mainId=f.id;put({id:'__main',folder:f.id});toast('Hauptordner: '+f.name)}
-  render();
+  toggleMain(f.id);
 };
 (async()=>{await openDB();const all=await loadAll();logo=all.find(n=>n.id==='__logo')||null;const mrec=all.find(n=>n.id==='__main');mainId=mrec?mrec.folder:null;nodes=all.filter(n=>n.id!=='root'&&n.id!=='__logo'&&n.id!=='__main');
   nodes.forEach(n=>{if(n.blob||n.txt!==undefined)put(n)});
