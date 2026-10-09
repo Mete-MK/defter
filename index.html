@@ -133,6 +133,9 @@ body.sq #sc{display:flex}
 #pge{font-size:12px;color:var(--mut);min-height:16px}
 #pgbar.ind #pgi{width:35%!important;animation:pgm 1.1s ease-in-out infinite}
 @keyframes pgm{0%{margin-left:-35%}100%{margin-left:100%}}
+#ud{display:none;min-width:40px;padding:8px 10px;font-size:18px;line-height:1}
+#dok.dng{background:#b3261e;border-color:#b3261e;color:#fff}
+.row.intrash{color:var(--mut)}
 .empty{color:var(--mut);text-align:center;margin-top:20vh}
 #ed{outline:none;min-height:50vh}
 #tb{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--bd);background:var(--pane)}
@@ -144,7 +147,7 @@ body.sq #sc{display:flex}
 <body>
 <div id="left">
   <div id="logoL"></div>
-  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><button id="hm" title="Hauptordner">☆</button><span id="qw"><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"><button id="qc2" title="Suche schließen" aria-label="Suche schließen">✕</button></span></div>
+  <div id="top"><button id="tt" title="Menü ein-/ausblenden">▸ Menü</button><button id="hm" title="Hauptordner">☆</button><button id="ud" title="Rückgängig">↶</button><span id="qw"><input id="q" type="search" placeholder="🔍 Suchen in Namen und Inhalten …"><button id="qc2" title="Suche schließen" aria-label="Suche schließen">✕</button></span></div>
   <div id="sc"><span>Suchen in:</span><button id="scD">DEFTER</button><button id="scM">HAUPTORDNER</button><button id="scC" class="on">AKTUELLER ORDNER</button></div>
   <div id="qs"></div>
   <div id="tools">
@@ -155,6 +158,8 @@ body.sq #sc{display:flex}
     <button id="bN">📝 Neues Dokument</button>
     <button id="bL">🖼 Logo</button>
     <button id="bH">★ Hauptordner</button>
+    <button id="bW">↩ Wiederherstellen</button>
+    <button id="bFix">🔧 Namen reparieren</button>
   </div>
   <div class="bar">
     <button id="bCp">⧉ Kopieren</button>
@@ -229,7 +234,7 @@ body.sq #sc{display:flex}
 <script>
 const $=s=>document.querySelector(s);
 const marked=new Set();let multi=false,dragIds=null,lpAt=0;
-function ask(title,o={}){return new Promise(res=>{const d=$('#dlg'),i=$('#di');$('#dt').textContent=title;i.style.display=o.input?'block':'none';i.value=o.def||'';$('#dok').textContent=o.ok||'OK';$('#dno').textContent=o.cancel||'Abbrechen';d.style.display='flex';setTimeout(()=>o.input?(i.focus(),i.select()):$('#dok').focus(),60);
+function ask(title,o={}){return new Promise(res=>{const d=$('#dlg'),i=$('#di');$('#dt').textContent=title;i.style.display=o.input?'block':'none';i.value=o.def||'';$('#dok').textContent=o.ok||'OK';$('#dok').classList.toggle('dng',!!o.danger);$('#dno').textContent=o.cancel||'Abbrechen';d.style.display='flex';setTimeout(()=>o.input?(i.focus(),i.select()):$(o.danger?'#dno':'#dok').focus(),60);
 const end=v=>{d.style.display='none';res(v)};
 $('#dok').onclick=()=>end(o.input?(i.value.trim()||null):true);$('#dno').onclick=()=>end(o.input?null:false);i.onkeydown=e=>{if(e.key==='Enter')$('#dok').click()}})}
 let nodes=[],open=new Set(['root']),selId='root',openFileId=null,db=null,seq=0;
@@ -238,7 +243,7 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 23';
+const APPV='Version 24';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms)),PG={cancel:false,t0:0,last:0,tick:null};let wl=null;
 const fmtDur=ms=>{const t=Math.max(0,Math.round(ms/1000));if(t<60)return t+' Sek.';return Math.floor(t/60)+' Min. '+(t%60)+' Sek.'};
 async function wake(on){try{if(on){if(!wl)wl=await navigator.wakeLock.request('screen')}else if(wl){await wl.release();wl=null}}catch(e){}}
@@ -307,7 +312,7 @@ function loadAll(){return new Promise(res=>{if(!db)return res([]);try{const q=db
 function loadKeys(){return new Promise(res=>{if(!db)return res();try{const q=db.transaction('t').objectStore('t').getAllKeys();q.onsuccess=()=>{(q.result||[]).forEach(k=>indexed.add(k));res()};q.onerror=()=>res()}catch(e){res()}})}
 const uid=()=>Date.now().toString(36)+(seq++)+Math.random().toString(36).slice(2,5);
 const coll=new Intl.Collator('de',{numeric:true});
-const cmp=(a,b)=>(a.type===b.type?0:a.type==='folder'?-1:1)||coll.compare(a.name,b.name);
+const cmp=(a,b)=>a.id==='__trash'?1:b.id==='__trash'?-1:(a.type===b.type?0:a.type==='folder'?-1:1)||coll.compare(a.name,b.name);
 function km(){if(!kmD)return;KM=new Map();IM=new Map();sig.clear();
   for(const n of nodes){IM.set(n.id,n);sig.set(n.id,n.parent+'\0'+n.name);let a=KM.get(n.parent);if(!a)KM.set(n.parent,a=[]);a.push(n)}
   for(const a of KM.values())a.sort(cmp);kmD=false}
@@ -327,17 +332,32 @@ function setMark(id,on){
     a=byId(a.parent);
   }
 }
-const topOf=a=>a.filter(i=>!a.some(o=>o!==i&&isDesc(i,o)));
+const topOf=a=>{const S=new Set(a);return a.filter(i=>{let x=byId(i);x=x&&byId(x.parent);while(x){if(S.has(x.id))return false;x=byId(x.parent)}return true})};
+/* Zeichensatz DOS/OEM (Windows-ZIP ohne UTF-8-Kennzeichen, z. B. „Türkü“ als Byte 0x81) */
+const CP850='ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø×ƒáíóúñÑªº¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ðÐÊËÈıÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµþÞÚÛÙýÝ¯´\u00ad±‗¾¶§÷¸°¨·¹³²■\u00a0';
+const cp850=b=>{let t='';for(const c of b)t+=c<128?String.fromCharCode(c):CP850[c-128];return t};
+function zipName(nb){try{return new TextDecoder('utf-8',{fatal:true}).decode(nb)}catch(e){return cp850(nb)}}
+const INV1252=(()=>{const m=new Map(),d=new TextDecoder('windows-1252');for(let b=0x80;b<=0xFF;b++)m.set(d.decode(new Uint8Array([b])),b);return m})();
+function fixName(name){
+  const L='A-Za-zÄÖÜäöüß';
+  if(!new RegExp('[\\u0080-\\u009F]|['+L+'][„”™šŽ]['+L+']|^[™šŽ]['+L+']').test(name))return null;
+  const bytes=[];
+  for(const ch of name){const c=ch.codePointAt(0);if(c<128)bytes.push(c);else{const b=INV1252.get(ch);if(b===undefined)return null;bytes.push(b)}}
+  const r=cp850(bytes);
+  if(r===name||/[\u0080-\u009F\u2500-\u259F]/.test(r))return null;
+  return r;
+}
 function render(){updScope();{const on=!!(mainId&&byId(mainId)&&mainId===curFolder()),h=$('#hm');h.classList.toggle('on',on);h.textContent=on?'★':'☆';h.title=on?'Hauptordner aktiv – Tippen hebt ihn auf, gedrückt halten springt zu ihm':'Diesen Ordner als Hauptordner festlegen (gedrückt halten: zum Hauptordner springen)'}
   const t=$('#tree'),st=t.scrollTop,qv=norm(($('#q').value||'').trim());t.innerHTML='';$('#qw').classList.toggle('has',!!qv);
   const walk=(pid,d)=>kids(pid).forEach(n=>{
+    if(n.id==='__trash'&&!kids('__trash').length)return;
     const r=document.createElement('div');r.className='row'+((marked.has(n.id)||(!marked.size&&n.id===selId))?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'')+(cutd(n.id)?' cutd':'');
     r.style.paddingLeft=(6+d*18)+'px';
     const isF=n.type==='folder',has=isF&&kids(n.id).length>0;
     const tg=document.createElement('span');tg.className='tg'+(has?'':' none');tg.textContent=open.has(n.id)?'−':'+';
     tg.onclick=e=>{e.stopPropagation();open.has(n.id)?open.delete(n.id):open.add(n.id);render()};
-    const ic=document.createElement('span');ic.innerHTML=isF?(open.has(n.id)?FOLDER_OPEN_SVG:FOLDER_SVG):extIcon(n.ext);
-    const nm=document.createElement('span');nm.className='nm';nm.textContent=(n.id===mainId?'★ ':'')+n.name;
+    const ic=document.createElement('span');ic.innerHTML=n.id==='__trash'?'<span style="font-size:17px;margin:0 2px">🗑</span>':isF?(open.has(n.id)?FOLDER_OPEN_SVG:FOLDER_SVG):extIcon(n.ext);
+    const nm=document.createElement('span');nm.className='nm';nm.textContent=n.id==='__trash'?'Papierkorb ('+kids('__trash').length+')':(n.id===mainId?'★ ':'')+n.name;
     if(multi){const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};r.append(cb)}
     r.append(tg,ic,nm);
     {let lt=null,lx=0,ly=0;const lc=()=>{clearTimeout(lt);lt=null};
@@ -353,7 +373,7 @@ function render(){updScope();{const on=!!(mainId&&byId(mainId)&&mainId===curFold
         else{const keep=new Set(['root']);let x=n;while(x){keep.add(x.id);x=byId(x.parent)}open.clear();keep.forEach(k=>open.add(k))}
         render()}else{openFile(n)}
     };
-    r.draggable=true;r.dataset.id=n.id;
+    r.draggable=n.id!=='__trash';r.dataset.id=n.id;if(n.id!=='__trash'&&isDesc(n.id,'__trash'))r.classList.add('intrash');
     r.addEventListener('dragstart',e=>{dragIds=marked.has(n.id)?[...marked]:[n.id];try{e.dataTransfer.setData('text/plain',n.name);e.dataTransfer.effectAllowed='move'}catch(x){}});
     r.addEventListener('dragend',()=>{dragIds=null;document.querySelectorAll('.dt').forEach(x=>x.classList.remove('dt'))});
     dropTarget(r,isF?n.id:n.parent);
@@ -364,18 +384,20 @@ function render(){updScope();{const on=!!(mainId&&byId(mainId)&&mainId===curFold
   root.innerHTML='<span class="tg" style="visibility:hidden">+</span>'+FOLDER_OPEN_SVG+'<span class="nm"><b>Defter</b></span>';
   root.onclick=()=>{selId='root';lastOpenParent=null;render()};dropTarget(root,'root');t.appendChild(root);
   if(qv)searchList(t,qv);else walk('root',1);
-  $('#bD').textContent=marked.size?'🗑 Löschen ('+marked.size+')':'🗑 Löschen';updTT();
+  {const tg=marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]),allT=tg.length>0&&tg.every(i=>i==='__trash'||isDesc(i,'__trash'));$('#bD').textContent=(allT?'🗑 Endgültig löschen':'🗑 Löschen')+(marked.size?' ('+marked.size+')':'')}
+  updTT();
   $('#bM').textContent=multi?'✕ Auswahl beenden':'☑ Auswählen';document.body.classList.toggle('sel',multi);$('#sbn').textContent=marked.size+' ausgewählt';
   $('#bPs').textContent=clip.ids.length?'📋 Einfügen ('+clip.ids.length+')':'📋 Einfügen';
   t.scrollTop=st;
   const s=byId(selId);let p=[],c=s;while(c&&c.id!=='root'){p.unshift(c.name);c=byId(c.parent)}
   $('#path').textContent=marked.size?eintr(marked.size)+' markiert – Löschen, Verschieben und Umbenennen beziehen sich darauf':(s?'Ausgewählt: /'+p.join('/'):'Nichts ausgewählt')+usageTxt+' · '+APPV;
 }
-function targetFolder(){const s=byId(selId);if(!s)return 'root';return s.type==='folder'?s.id:s.parent}
+function targetFolder(){const s=byId(selId);if(!s)return 'root';const f=s.type==='folder'?s.id:s.parent;return(f==='__trash'||isDesc(f,'__trash'))?'root':f}
 
 $('#bF').onclick=async()=>{
   const name=await ask('Name des neuen Ordners:',{input:true,ok:'Anlegen'});if(!name)return;
   const n={id:uid(),parent:targetFolder(),type:'folder',name};nodes.push(n);put(n);open.add(n.parent);selId=n.id;render();
+  pushUndo('Ordner „'+name+'“ angelegt',()=>trashItems([n.id],true));
 };
 function releaseSel(){marked.clear();selId=null;multi=false;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}
 $('#bM').onclick=()=>{if(multi)releaseSel();else{multi=true;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();render()}};
@@ -383,20 +405,104 @@ $('#sba').onclick=()=>{nodes.forEach(n=>marked.add(n.id));render()};
 $('#sbe').onclick=releaseSel;
 $('#sbd').onclick=()=>$('#bD').click();$('#sbc').onclick=()=>$('#bCp').click();$('#sbx').onclick=()=>$('#bCt').click();$('#sbv').onclick=()=>$('#bV').click();
 $('#tree').addEventListener('click',e=>{if(e.target===e.currentTarget&&Date.now()-lpAt>700)releaseSel()});
-$('#bD').onclick=async()=>{
-  const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
-  if(!tg.length)return toast('Bitte zuerst einen Eintrag markieren (mehrere: lange auf einen Eintrag drücken).');
-  const ids=new Set();const col=i=>{ids.add(i);kids(i).forEach(x=>col(x.id))};tg.forEach(col);
-  const all=[...ids].map(byId).filter(Boolean),fi=all.filter(x=>x.type==='file').length,fo=all.length-fi;
-  const names=tg.map(i=>byId(i)).filter(Boolean).map(x=>(x.type==='folder'?'📁 ':'📄 ')+x.name);
-  const shown=names.slice(0,6).join('\n')+(names.length>6?'\n… und '+(names.length-6)+' weitere':'');
-  const ok=await ask('Wirklich löschen?\n\n'+shown+'\n\nInsgesamt: '+fo+' Ordner, '+dat(fi)+'. Das kann nicht rückgängig gemacht werden.',{ok:'Löschen',cancel:'Abbrechen'});
-  if(!ok)return;
-  nodes=nodes.filter(x=>!ids.has(x.id));ids.forEach(del);
-  if(ids.has(openFileId)){openFileId=null;$('#tb')?.remove();clearView()}
-  if(ids.has(selId))selId='root';
-  marked.clear();render();toast('Gelöscht: '+fo+' Ordner, '+dat(fi));
+/* ---------- Rückgängig (letzte 3 Aktionen) & Papierkorb ---------- */
+const undoStack=[];
+function updUndo(){const b=$('#ud'),u=undoStack[undoStack.length-1];b.style.display=u?'block':'none';b.title=u?'Rückgängig: '+u.label+(undoStack.length>1?' (noch '+(undoStack.length-1)+' weitere möglich)':''):'Rückgängig'}
+function pushUndo(label,fn){undoStack.push({label,fn});if(undoStack.length>3)undoStack.shift();updUndo()}
+async function doUndo(){
+  const u=undoStack.pop();updUndo();
+  if(!u)return toast('Nichts zum Rückgängigmachen.');
+  try{await u.fn()}catch(e){toast('Rückgängig nicht möglich: '+((e&&e.message)||e));return}
+  render();usage();toast('Rückgängig: '+u.label);
+}
+$('#ud').onclick=doUndo;
+function toastAct(msg,label,fn){
+  const t=$('#toast');t.textContent=msg+' ';
+  const b=document.createElement('button');b.textContent=label;b.style.cssText='margin-left:8px;padding:3px 12px;border-radius:14px';
+  b.onclick=()=>{t.style.display='none';fn()};t.appendChild(b);t.style.display='block';
+  clearTimeout(toast.h);toast.h=setTimeout(()=>t.style.display='none',7000);
+}
+function putMeta(arr){kmD=true;if(!db||!arr.length)return Promise.resolve();return new Promise(res=>{try{const t=db.transaction('n','readwrite'),st=t.objectStore('n');arr.forEach(n=>st.put(n));done(t,res)}catch(e){res()}})}
+function delMany(ids){kmD=true;if(!db)return Promise.resolve();return new Promise(res=>{try{const t=db.transaction(['n','b','t'],'readwrite'),a=t.objectStore('n'),b=t.objectStore('b'),c=t.objectStore('t');ids.forEach(id=>{a.delete(id);b.delete(id);c.delete(id)});done(t,res)}catch(e){res()}})}
+function uniqName(par,name,type,sfx){
+  const has=nm=>kids(par).some(x=>x.type===type&&x.name===nm);
+  if(!has(name))return name;
+  const dot=type==='file'?name.lastIndexOf('.'):-1,b=dot>0?name.slice(0,dot):name,e=dot>0?name.slice(dot):'';
+  let k=1,nn;do{nn=b+sfx+(k>1?' ('+k+')':'')+e;k++}while(has(nn));return nn;
+}
+const selTargetsRaw=()=>topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
+const selTargets=()=>selTargetsRaw().filter(i=>i!=='__trash');
+const inTrash=id=>id==='__trash'||isDesc(id,'__trash');
+async function trashItems(ids,noUndo){
+  ids=topOf([...new Set(ids)].filter(i=>byId(i)&&i!=='__trash'&&!inTrash(i)));
+  if(!ids.length)return;
+  const rec=[];
+  for(const i of ids){const n=byId(i);rec.push({id:i,from:n.parent});n.from=n.parent;n.parent='__trash'}
+  if(mainId&&ids.some(i=>isDesc(mainId,i))){mainId=null;del('__main')}
+  selId=null;marked.clear();
+  await putMeta(rec.map(r=>byId(r.id)));
+  open.add('__trash');render();usage();
+  if(!noUndo){const msg=eintr(ids.length)+' in den Papierkorb verschoben';pushUndo(msg,()=>restoreRec(rec));toastAct(msg,'↶ Rückgängig',doUndo)}
+}
+async function restoreRec(rec){
+  const arr=[];
+  for(const r of rec){
+    const n=byId(r.id);if(!n)continue;
+    const dest=(r.from==='root'||(byId(r.from)&&!inTrash(r.from)))?r.from:'root';
+    n.name=uniqName(dest,n.name,n.type,' (wiederhergestellt)');n.parent=dest;delete n.from;arr.push(n);
+  }
+  await putMeta(arr);
+}
+$('#bW').onclick=async()=>{
+  const ids=selTargets().filter(i=>byId(i)&&byId(i).parent==='__trash');
+  if(!ids.length)return toast('Bitte im Papierkorb einen Eintrag markieren.');
+  await restoreRec(ids.map(i=>({id:i,from:byId(i).from||'root'})));
+  pushUndo(eintr(ids.length)+' wiederhergestellt',()=>trashItems(ids,true));
+  marked.clear();render();toast(eintr(ids.length)+' wiederhergestellt');
 };
+async function removeNodes(roots){
+  const ids=new Set(),col=i=>{ids.add(i);kids(i).forEach(x=>col(x.id))};roots.forEach(col);
+  nodes=nodes.filter(x=>!ids.has(x.id));kmD=true;
+  const arr=[...ids];for(let i=0;i<arr.length;i+=400)await delMany(arr.slice(i,i+400));
+  arr.forEach(id=>{indexed.delete(id);mem.delete(id)});
+  if(ids.has(openFileId)){openFileId=null;removeEditor();clearView()}
+  if(ids.has(selId))selId=null;
+  if(mainId&&ids.has(mainId)){mainId=null;del('__main')}
+  marked.clear();return arr.length;
+}
+async function finalDelete(roots,all){
+  roots=topOf(roots.filter(i=>byId(i)&&i!=='__trash'));
+  if(!roots.length)return toast('Der Papierkorb ist leer.');
+  const ids=new Set(),col=i=>{ids.add(i);kids(i).forEach(x=>col(x.id))};roots.forEach(col);
+  const list=[...ids].map(byId).filter(Boolean),fi=list.filter(x=>x.type==='file').length,fo=list.length-fi;
+  const names=roots.map(byId).filter(Boolean).map(x=>(x.type==='folder'?'📁 ':'📄 ')+x.name);
+  const shown=names.slice(0,6).join('\n')+(names.length>6?'\n… und '+(names.length-6)+' weitere':'');
+  const ok=await ask('⚠ '+(all?'PAPIERKORB ENDGÜLTIG LEEREN':'ENDGÜLTIG LÖSCHEN')+'\n\nEs wird endgültig gelöscht:\n'+shown+'\n\nInsgesamt '+fo+' Ordner und '+dat(fi)+'. Das lässt sich NICHT rückgängig machen. Die Einträge sind danach auch nicht mehr im Papierkorb.',{ok:'Endgültig löschen',cancel:'Abbrechen',danger:true});
+  if(!ok)return;
+  await removeNodes(roots);
+  render();usage();toast('Endgültig gelöscht: '+fo+' Ordner, '+dat(fi));
+}
+$('#bD').onclick=async()=>{
+  const raw=selTargetsRaw();
+  if(!raw.length)return toast('Bitte zuerst einen Eintrag markieren (mehrere: lange auf einen Eintrag drücken).');
+  if(raw.length===1&&raw[0]==='__trash')return finalDelete(kids('__trash').map(n=>n.id),true);
+  const rest=raw.filter(i=>i!=='__trash'),out=rest.filter(i=>!inTrash(i));
+  if(out.length)return trashItems(out);
+  return finalDelete(rest);
+};
+/* kaputte Namen (z. B. „Türkü“ als Zeichen mit Strichen) reparieren */
+async function repairNames(){
+  const list=nodes.map(n=>({n,nn:fixName(n.name)})).filter(x=>x.nn);
+  if(!list.length)return toast('Alle Namen sind in Ordnung.');
+  const ex=list.slice(0,6).map(x=>x.n.name+'  →  '+x.nn).join('\n');
+  if(!await ask('Namen korrigieren\n\n'+eintr(list.length)+' haben falsch kodierte Sonderzeichen (ü, ö, ä …):\n'+ex+(list.length>6?'\n…':''),{ok:'Korrigieren',cancel:'Abbrechen'}))return;
+  const rec=[];
+  for(const {n,nn} of list){rec.push({id:n.id,old:n.name});n.name=uniqName(n.parent,nn,n.type,' (korrigiert)')}
+  await putMeta(list.map(x=>x.n));
+  pushUndo('Namen korrigiert ('+list.length+')',async()=>{const arr=[];for(const r of rec){const n=byId(r.id);if(n){n.name=r.old;arr.push(n)}}await putMeta(arr)});
+  render();toast(eintr(list.length)+' korrigiert');
+}
+$('#bFix').onclick=repairNames;
 /* ---------- Verschieben ---------- */
 const isDesc=(id,anc)=>{let x=byId(id);while(x){if(x.id===anc)return true;x=byId(x.parent)}return false};
 function dropTarget(el,dest){
@@ -406,21 +512,29 @@ function dropTarget(el,dest){
 }
 async function moveItems(ids,dest){
   ids=[...new Set(ids)].filter(i=>byId(i));
-  ids=ids.filter(i=>!ids.some(o=>o!==i&&isDesc(i,o)));
+  if(dest==='__trash'||isDesc(dest,'__trash'))return trashItems(ids);
+  ids=topOf(ids);
   const bad=ids.filter(i=>isDesc(dest,i));
   ids=ids.filter(i=>!bad.includes(i)&&byId(i).parent!==dest);
   if(!ids.length)return toast(bad.length?'Ein Ordner kann nicht in sich selbst verschoben werden.':'Nichts zu verschieben – die Einträge liegen schon dort.');
-  const clash=i=>{const n=byId(i);return nodes.find(x=>x.parent===dest&&x.name===n.name&&x.type===n.type&&x.id!==n.id)};
+  const clash=i=>{const n=byId(i);return kids(dest).find(x=>x.name===n.name&&x.type===n.type&&x.id!==n.id)};
   const fc=ids.filter(i=>clash(i)&&byId(i).type==='folder'),dc=ids.filter(i=>clash(i)&&byId(i).type==='file');
   let rp=true;
   if(dc.length)rp=await ask(dc.length===1?`Im Zielordner gibt es „${byId(dc[0]).name}“ schon.\n\nÜberschreiben?`:`${dc.length} Dateien gibt es im Zielordner schon.\n\nAlle überschreiben oder diese überspringen?`,{ok:'Überschreiben',cancel:'Überspringen'});
-  let moved=0,skipped=fc.length;
+  let moved=0,skipped=fc.length;const movedRec=[],mv=[],disp=[];
   for(const id of ids){
     const n=byId(id);if(!n||fc.includes(id))continue;
     const ex=clash(id);
-    if(ex){if(!rp){skipped++;continue}nodes=nodes.filter(x=>x.id!==ex.id);del(ex.id);if(openFileId===ex.id){openFileId=null;clearView()}}
-    n.parent=dest;put(n);moved++;
+    if(ex){if(!rp){skipped++;continue}ex.from=dest;ex.parent='__trash';disp.push(ex)}
+    movedRec.push({id,from:n.parent});n.parent=dest;mv.push(n);moved++;
   }
+  await putMeta([...mv,...disp]);
+  if(moved)pushUndo(eintr(moved)+' verschoben',async()=>{
+    const arr=[];
+    for(const r of movedRec){const n=byId(r.id);if(n){n.parent=(r.from==='root'||byId(r.from))?r.from:'root';arr.push(n)}}
+    for(const x of disp){const n=byId(x.id);if(n){n.parent=dest;delete n.from;arr.push(n)}}
+    await putMeta(arr);
+  });
   open.add(dest);marked.clear();render();
   toast(moved+' verschoben'+(skipped?', '+skipped+' übersprungen (gleichnamiger Ordner/Datei vorhanden)':''));
 }
@@ -431,7 +545,7 @@ function pickFolder(targets){
       const box=$('#mf');box.innerHTML='';
       const add=(id,label,d)=>{const r=document.createElement('div');const off=id!=='root'&&targets.some(t=>isDesc(id,t));r.className='row'+(id===f?' sel':'')+(off?' off':'');r.style.paddingLeft=(8+d*18)+'px';r.innerHTML=FOLDER_SVG+'<span class="nm"></span>';r.lastChild.textContent=label;r.onclick=()=>{f=id;draw()};box.appendChild(r)};
       add('root','Defter (oberste Ebene)',0);
-      const walk=(pid,d)=>kids(pid).filter(n=>n.type==='folder').forEach(n=>{add(n.id,n.name,d);walk(n.id,d+1)});
+      const walk=(pid,d)=>kids(pid).filter(n=>n.type==='folder'&&n.id!=='__trash').forEach(n=>{add(n.id,n.name,d);walk(n.id,d+1)});
       walk('root',1);
       $('#mp').textContent=f===null?'Bitte Zielordner antippen.':'Ziel: '+(f==='root'?'/ (oberste Ebene)':fpath(f));
     };
@@ -444,7 +558,7 @@ function pickFolder(targets){
   });
 }
 $('#bV').onclick=async()=>{
-  const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
+  const tg=selTargets();
   if(!tg.length)return toast('Bitte zuerst Ordner oder Dateien markieren (mehrere: lange auf einen Eintrag drücken).');
   const dest=await pickFolder(tg);if(dest===null)return;
   await moveItems(tg,dest);
@@ -459,11 +573,11 @@ document.addEventListener('keydown',e=>{
     if(tn==='BUTTON'||tn==='INPUT'||tn==='TEXTAREA')return;
     if(vis('#dlg'))$('#dok').click();else if(vis('#mv'))$('#mok').click();else if(vis('#sv'))$('#sok').click();
   }
-  else if((e.ctrlKey||e.metaKey)&&['c','x','v','a'].includes(e.key.toLowerCase())){
+  else if((e.ctrlKey||e.metaKey)&&['c','x','v','a','z'].includes(e.key.toLowerCase())){
     if(['INPUT','TEXTAREA'].includes(tn)||t.isContentEditable||['#dlg','#mv','#sv','#qp','#lg'].some(vis))return;
     if(e.key.toLowerCase()==='c'&&window.getSelection&&String(getSelection()))return;
     e.preventDefault();
-    ({c:()=>$('#bCp').click(),x:()=>$('#bCt').click(),v:()=>$('#bPs').click(),a:()=>{multi=true;nodes.forEach(n=>marked.add(n.id));render()}})[e.key.toLowerCase()]();
+    ({c:()=>$('#bCp').click(),x:()=>$('#bCt').click(),v:()=>$('#bPs').click(),a:()=>{multi=true;nodes.forEach(n=>marked.add(n.id));render()},z:()=>doUndo()})[e.key.toLowerCase()]();
   }
   else if(e.key==='F2'){
     if(['INPUT','TEXTAREA'].includes(tn)||t.isContentEditable||['#dlg','#mv','#sv','#qp','#lg'].some(vis))return;
@@ -523,7 +637,7 @@ async function zipItemsFast(file){
   for(let i=0;i<total&&o+46<=cd.length;i++){
     if(cv.getUint32(o,true)!==0x02014b50)break;
     const flags=cv.getUint16(o+8,true),method=cv.getUint16(o+10,true),csize=cv.getUint32(o+20,true),nl=cv.getUint16(o+28,true),el=cv.getUint16(o+30,true),cl=cv.getUint16(o+32,true),loff=cv.getUint32(o+42,true);
-    const nb=cd.subarray(o+46,o+46+nl),name=(flags&0x800)?new TextDecoder('utf-8').decode(nb):smartDecode(nb);
+    const nb=cd.subarray(o+46,o+46+nl),name=(flags&0x800)?new TextDecoder('utf-8').decode(nb):zipName(nb);
     o+=46+nl+el+cl;
     if(flags&1)continue;
     const parts=name.split(/[\\/]/).filter(Boolean);
@@ -547,7 +661,7 @@ async function zipItems(file){
   try{return await zipItemsFast(file)}catch(e){return zipItemsJ(file)}
 }
 async function zipItemsJ(file){
-  await ensureLib('JSZip');const z=await JSZip.loadAsync(file),out=[];
+  await ensureLib('JSZip');const z=await JSZip.loadAsync(file,{decodeFileName:b=>zipName(Uint8Array.from(b))}),out=[];
   z.forEach((path,en)=>{
     if(en.dir){const dp=path.split(/[\\/]/).filter(Boolean);if(dp.length&&!dp.some(q=>q==='__MACOSX'||q.startsWith('.')))out.push({folder:true,dirs:dp});return}
     const parts=path.split(/[\\/]/).filter(Boolean),name=parts.pop();
@@ -574,9 +688,9 @@ async function ingest(items,base){
 async function ingestRaw(items,base){
   const folders=items.filter(it=>it.folder),ok=items.filter(it=>!it.folder&&OKX.includes((it.f.name.split('.').pop()||'').toLowerCase()));
   const skipped=items.length-ok.length-folders.length;
-  let fc=0;
+  let fc=0;const created=[];
   const find=(p,d)=>kids(p).find(n=>n.type==='folder'&&n.name===d);
-  const resolve=(dirs,create)=>{let p=base;for(const d of dirs){let c=find(p,d);if(!c){if(!create)return null;c={id:uid(),parent:p,type:'folder',name:d};nodes.push(c);put(c);fc++}p=c.id}return p};
+  const resolve=(dirs,create)=>{let p=base;for(const d of dirs){let c=find(p,d);if(!c){if(!create)return null;c={id:uid(),parent:p,type:'folder',name:d};nodes.push(c);put(c);fc++;created.push(c.id)}p=c.id}return p};
   const exist=(p,name)=>kids(p).find(n=>n.type==='file'&&n.name===name);
   folders.forEach(it=>resolve(it.dirs,true));
   const conf=ok.filter(it=>{const p=resolve(it.dirs,false);return p&&exist(p,it.f.name)});
@@ -590,10 +704,11 @@ async function ingestRaw(items,base){
     if(++k===1||Date.now()-PG.last>250){pgSet((k-1)/ok.length,'Datei '+k+' von '+ok.length);await sleep(0)}
     const p=resolve(it.dirs,true),ex=exist(p,it.f.name),ext=it.f.name.split('.').pop().toLowerCase();
     if(ex){if(!over)continue;ex.blob=await getBl(it);ex.mime=it.f.type;delete ex.html;unindex(ex.id);await put(ex);replaced++;if(openFileId===ex.id)openFile(ex)}
-    else{const n={id:uid(),parent:p,type:'file',name:it.f.name,ext:ext.toLowerCase(),blob:await getBl(it),mime:it.f.type};nodes.push(n);if(!kmD)kmAdd(n);batch.push(n);bsz+=(n.blob&&n.blob.size)||0;added++;if(batch.length>=100||bsz>=30e6){await putMany(batch);batch=[];bsz=0}}
+    else{const n={id:uid(),parent:p,type:'file',name:it.f.name,ext:ext.toLowerCase(),blob:await getBl(it),mime:it.f.type};nodes.push(n);created.push(n.id);if(!kmD)kmAdd(n);batch.push(n);bsz+=(n.blob&&n.blob.size)||0;added++;if(batch.length>=100||bsz>=30e6){await putMany(batch);batch=[];bsz=0}}
   }
   if(batch.length)await putMany(batch);
   const dur=Date.now()-PG.t0;pgEnd();
+  if(created.length)pushUndo('Import ('+eintr(created.length)+')',()=>trashItems(created.filter(i=>byId(i)),true));
   open.add(base);setStatus('');render();usage();
   const m=[];if(fc)m.push(fc+' Ordner');if(added)m.push(added+' neu');if(replaced)m.push(replaced+' überschrieben');if(skipped)m.push(skipped+' nicht unterstützt');if(PG.cancel)m.push('abgebrochen');m.push('in '+fmtDur(dur));
   toast(m.length?m.join(', '):'Nichts hochgeladen');
@@ -1055,7 +1170,7 @@ function saveDialog(){
       const box=$('#sf');box.innerHTML='';
       const add=(id,label,d)=>{const r=document.createElement('div');r.className='row'+(id===f?' sel':'');r.style.paddingLeft=(8+d*18)+'px';r.innerHTML=FOLDER_SVG+'<span class="nm"></span>';r.lastChild.textContent=label;r.onclick=()=>{f=id;draw()};box.appendChild(r)};
       add('root','Defter (oberste Ebene)',0);
-      const walk=(pid,d)=>kids(pid).filter(n=>n.type==='folder').forEach(n=>{add(n.id,n.name,d);walk(n.id,d+1)});
+      const walk=(pid,d)=>kids(pid).filter(n=>n.type==='folder'&&n.id!=='__trash').forEach(n=>{add(n.id,n.name,d);walk(n.id,d+1)});
       walk('root',1);
       $('#sp').textContent='Speicherort: '+(f==='root'?'/ (oberste Ebene)':fpath(f));
     };
@@ -1117,7 +1232,7 @@ async function saveDocx(asNew){
   if(saved){
     if(!await ask(`Die Datei „${name}“ gibt es in diesem Ordner schon.\n\nÜberschreiben?`,{ok:'Überschreiben'}))return;
     saved.blob=blob;saved.mime=blob.type;saved.ext=fmt;saved.html=ed.innerHTML;saved.base=edBase;unindex(saved.id);await put(saved);
-  }else{saved={id:uid(),parent:folder,type:'file',name,ext:fmt,blob,mime:blob.type,html:ed.innerHTML,base:edBase};nodes.push(saved);await put(saved)}
+  }else{saved={id:uid(),parent:folder,type:'file',name,ext:fmt,blob,mime:blob.type,html:ed.innerHTML,base:edBase};nodes.push(saved);await put(saved);{const sid=saved.id,sn=name;pushUndo('Dokument „'+sn+'“ gespeichert',()=>trashItems([sid],true))}}
   edNode=saved;edDirty=false;$('#ttl').textContent='Bearbeiten: '+name;
   open.add(folder);render();usage();
   let ok=false;
@@ -1129,7 +1244,7 @@ $('#bR').onclick=async()=>{
   const top=topOf([...marked]);
   if(top.length>1)return toast('Zum Umbenennen bitte nur einen Eintrag markieren.');
   const id=top.length?top[0]:selId,n=byId(id);
-  if(!n||id==='root')return toast('Bitte zuerst einen Ordner oder eine Datei markieren.');
+  if(!n||id==='root'||id==='__trash')return toast('Bitte zuerst einen Ordner oder eine Datei markieren.');
   const dot=n.type==='file'?n.name.lastIndexOf('.'):-1,base=dot>0?n.name.slice(0,dot):n.name,ext=dot>0?n.name.slice(dot):'';
   const v=await ask('Neuer Name für '+(n.type==='folder'?'den Ordner':'die Datei')+(ext?' (Endung '+ext+' bleibt)':'')+':',{input:true,def:base,ok:'Umbenennen'});
   if(!v)return;
@@ -1138,7 +1253,7 @@ $('#bR').onclick=async()=>{
   const nn=b+ext;
   if(nn===n.name)return;
   if(nodes.some(x=>x.parent===n.parent&&x.id!==n.id&&x.type===n.type&&x.name===nn))return toast('Dort gibt es schon „'+nn+'“.');
-  n.name=nn;put(n);if(openFileId===n.id)$('#ttl').textContent=nn;render();toast('Umbenannt in „'+nn+'“');
+  const oldName=n.name;n.name=nn;put(n);pushUndo('Umbenannt in „'+nn+'“',()=>{const m=byId(n.id);if(m){m.name=oldName;return put(m)}});if(openFileId===n.id)$('#ttl').textContent=nn;render();toast('Umbenannt in „'+nn+'“');
 };
 /* ---------- Logo ---------- */
 let logo=null,logoURL=null;
@@ -1174,7 +1289,7 @@ let clip={ids:[],mode:null};
 const cutd=id=>clip.mode==='cut'&&clip.ids.some(c=>isDesc(id,c));
 const icon=n=>n.type==='folder'?'📁':n.ext==='pdf'?'📕':n.ext==='docx'?'📘':AUDIO.includes(n.ext)?'🎵':'📄';
 function clipSet(cut){
-  const tg=topOf(marked.size?[...marked]:(selId&&selId!=='root'?[selId]:[]));
+  const tg=selTargets();
   if(!tg.length)return toast('Bitte zuerst Ordner oder Dateien markieren.');
   clip={ids:tg,mode:cut?'cut':'copy'};render();
   toast(eintr(tg.length)+' '+(cut?'ausgeschnitten':'kopiert')+' – Zielordner wählen und „Einfügen“');
@@ -1193,10 +1308,11 @@ $('#bPs').onclick=async()=>{
     if(!has(name))return name;
     const dot=type==='file'?name.lastIndexOf('.'):-1,b=dot>0?name.slice(0,dot):name,e=dot>0?name.slice(dot):'';
     let k=1,nn;do{nn=b+' - Kopie'+(k>1?' ('+k+')':'')+e;k++}while(has(nn));return nn};
-  let c=0;
-  const cp=async(id,par)=>{const n=byId(id),o={...n,id:uid(),parent:par,name:uniq(par,n.name,n.type)};if(n.type==='file')o.blob=await blobOf(id);nodes.push(o);await put(o);c++;
+  let c=0;const createdC=[];
+  const cp=async(id,par)=>{const n=byId(id),o={...n,id:uid(),parent:par,name:uniq(par,n.name,n.type)};if(n.type==='file')o.blob=await blobOf(id);nodes.push(o);await put(o);createdC.push(o.id);c++;
     if(n.type==='folder')for(const k of kids(id).map(x=>x.id))await cp(k,o.id)};
   for(const i of ids)await cp(i,dest);
+  if(createdC.length)pushUndo('Eingefügt ('+eintr(createdC.length)+')',()=>trashItems(createdC.filter(i=>byId(i)),true));
   open.add(dest);render();if(c)toast(eintr(c)+' eingefügt');
 };
 
@@ -1319,7 +1435,8 @@ $('#tree').addEventListener('contextmenu',e=>{
     menuAdd('↪ Verschieben …','',()=>$('#bV').click());
     if(n.type==='folder')menuAdd(mainId===n.id?'☆ Hauptordner aufheben':'★ Als Hauptordner','',()=>$('#bH').click());
     if(n.type==='file')menuAdd('⬇ Herunterladen','',()=>$('#bX').click());
-    menuAdd('🗑 Löschen','Entf',()=>$('#bD').click());
+    if(n.id!=='__trash'&&n.parent==='__trash')menuAdd('↩ Wiederherstellen','',()=>$('#bW').click());
+    menuAdd(n.id==='__trash'?'🗑 Papierkorb leeren …':inTrash(n.id)?'🗑 Endgültig löschen …':'🗑 In den Papierkorb','Entf',()=>$('#bD').click());
   }
   menuAdd('＋ Neuer Ordner','',()=>$('#bF').click());
   cm.style.display='block';
@@ -1414,7 +1531,7 @@ $('#mpx').onclick=()=>{const a=$('#au');a.pause();a.removeAttribute('src');a.loa
 const scope={dw:false,main:false,cur:true};let lastOpenParent=null,scKeep=false,snap=null;
 const curFolder=()=>(lastOpenParent&&byId(lastOpenParent))?lastOpenParent:(targetFolder()||'root');
 const scopeFolders=()=>{const f=[];if(scope.main&&mainId&&byId(mainId))f.push(mainId);if(scope.cur||!f.length)f.push(curFolder());return f};
-const inScope=n=>scope.dw||(snap||scopeFolders()).some(f=>f==='root'||isDesc(n.id,f));
+const inScope=n=>!isDesc(n.id,'__trash')&&(scope.dw||(snap||scopeFolders()).some(f=>f==='root'||isDesc(n.id,f)));
 function updScope(){
   $('#scD').classList.toggle('on',scope.dw);
   $('#scM').classList.toggle('on',!scope.dw&&scope.main&&!!mainId);
@@ -1451,7 +1568,7 @@ function pickFolders(init){
         r.onclick=()=>{sel.has(id)?sel.delete(id):sel.add(id);draw()};box.appendChild(r);
       };
       add('root','Defter (alles)',0);
-      const walk=(pid,d)=>kids(pid).filter(n=>n.type==='folder').forEach(n=>{add(n.id,n.name,d);walk(n.id,d+1)});
+      const walk=(pid,d)=>kids(pid).filter(n=>n.type==='folder'&&n.id!=='__trash').forEach(n=>{add(n.id,n.name,d);walk(n.id,d+1)});
       walk('root',1);
       $('#mp').textContent=sel.size+' Ordner ausgewählt (einschließlich Unterordner)';
     };
@@ -1486,7 +1603,7 @@ function gotoMain(quiet){
   ['pointerup','pointerleave','pointercancel'].forEach(ev=>h.addEventListener(ev,()=>{clearTimeout(t);t=null}));
   h.onclick=()=>{if(Date.now()-lp<700)return;const c=curFolder();if(!c||c==='root'||!byId(c))return toast('Öffne zuerst den Ordner, der dein Hauptordner sein soll.');toggleMain(c)}}
 function toggleMain(id){
-  const f=byId(id);if(!f||f.type!=='folder')return;
+  const f=byId(id);if(!f||f.type!=='folder'||f.id==='__trash'||isDesc(id,'__trash'))return toast('Dieser Ordner kann nicht Hauptordner sein.');
   if(mainId===id){mainId=null;del('__main');toast('Hauptordner aufgehoben');if(scope.main){scope.main=false;if(!scope.dw)scope.cur=true}}
   else{mainId=id;put({id:'__main',folder:id});toast('Hauptordner: '+f.name)}
   snap=$('#q').value.trim()?scopeFolders():null;
@@ -1498,9 +1615,11 @@ $('#bH').onclick=()=>{
   toggleMain(f.id);
 };
 (async()=>{await openDB();const all=await loadAll();logo=all.find(n=>n.id==='__logo')||null;const mrec=all.find(n=>n.id==='__main');mainId=mrec?mrec.folder:null;nodes=all.filter(n=>n.id!=='root'&&n.id!=='__logo'&&n.id!=='__main');
+  if(!nodes.some(n=>n.id==='__trash')){const tn={id:'__trash',parent:'root',type:'folder',name:'Papierkorb'};nodes.push(tn);put(tn)}
   nodes.forEach(n=>{if(n.blob||n.txt!==undefined)put(n)});
   await loadKeys();applyLogo();if(mainId&&byId(mainId))gotoMain(true);else render();usage();
   setTimeout(()=>{ensureLib('docx').catch(()=>{})},1200);
+  setTimeout(()=>{const bad=nodes.filter(n=>fixName(n.name)).length;if(bad)toastAct(eintr(bad)+' mit kaputten Umlauten gefunden.','🔧 Reparieren',repairNames)},2500);
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}})();
 </script>
 <script>
