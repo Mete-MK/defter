@@ -1,5 +1,6 @@
-const V='defter-v21'; // bei Updates der App hochzählen (v2, v3 ...)
+const V='defter-v23'; // bei Updates der App hochzählen (v2, v3 ...)
 const LIBS=[
+ "https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js",
  "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
  "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
  "https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js",

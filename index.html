@@ -124,6 +124,15 @@ body.sq #sc{display:flex}
 #sc button.on{background:#fff3a8;border-color:#e3cb55;color:#333;font-weight:600}
 #scl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #sc button{background:#34363a;color:#aaa;border-color:#4a4c50}:root:not([data-theme="light"]) #sc button.on{background:#fff3a8;color:#333;border-color:#e3cb55}}
+#pg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:12;padding:16px}
+#pgb{background:var(--pane);border:1px solid var(--bd);border-radius:12px;padding:18px;width:min(380px,100%);display:flex;flex-direction:column;gap:12px}
+#pgbar{height:10px;background:var(--hov);border-radius:6px;overflow:hidden}
+#pgi{display:block;height:100%;width:0;background:#0b4a8f;transition:width .15s}
+#pgx{font-size:13px;color:var(--mut);min-height:18px}
+#pgp{font-size:36px;font-weight:700;text-align:center;color:#0b4a8f;min-height:44px;line-height:44px}
+#pge{font-size:12px;color:var(--mut);min-height:16px}
+#pgbar.ind #pgi{width:35%!important;animation:pgm 1.1s ease-in-out infinite}
+@keyframes pgm{0%{margin-left:-35%}100%{margin-left:100%}}
 .empty{color:var(--mut);text-align:center;margin-top:20vh}
 #ed{outline:none;min-height:50vh}
 #tb{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 14px;border-bottom:1px solid var(--bd);background:var(--pane)}
@@ -170,12 +179,14 @@ body.sq #sc{display:flex}
   <div id="vs"><div id="view"><div class="empty"><div id="lc" style="margin-bottom:18px"></div>Datei links auswählen, um sie hier anzuzeigen.</div></div></div>
 </div>
 <div id="qp"><div id="qb">
-  <b>Mehrere Ordner hochladen</b>
+  <b id="qtt">Mehrere Ordner hochladen</b>
   <div id="qt" style="font-size:13px;color:var(--mut)"></div>
   <div id="ql"></div>
   <div id="qh" style="font-size:12px;color:var(--mut)">Lässt dein Gerät keine Ordnerauswahl zu, geht es auch per ZIP: Ordner in der Dateien-App gedrückt halten, „Komprimieren“ wählen und hier die ZIP-Datei auswählen.</div>
   <div style="display:flex;gap:6px;flex-wrap:wrap">
     <button id="qz" class="pri">📦 ZIP-Datei wählen</button>
+    <button id="qf">🗂 Dateien wählen (mehrere)</button>
+    <button id="qu">🌐 Aus dem Internet laden</button>
     <button id="qa">＋ Ordner wählen</button>
     <button id="qc">Leeren</button>
   </div>
@@ -212,6 +223,7 @@ body.sq #sc{display:flex}
   <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:space-between"><button id="lrm">Logo entfernen</button><span style="display:flex;gap:6px"><button id="lno">Abbrechen</button><button class="pri" id="lok">Speichern</button></span></div>
 </div></div>
 <div id="cm"></div>
+<div id="pg"><div id="pgb"><b id="pgt">Import</b><div id="pgp"></div><div id="pgbar"><i id="pgi"></i></div><div id="pgx"></div><div id="pge"></div><button id="pgc">Abbrechen</button></div></div>
 <div id="toast"></div>
 
 <script>
@@ -226,7 +238,24 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 21';
+const APPV='Version 23';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms)),PG={cancel:false,t0:0,last:0,tick:null};let wl=null;
+const fmtDur=ms=>{const t=Math.max(0,Math.round(ms/1000));if(t<60)return t+' Sek.';return Math.floor(t/60)+' Min. '+(t%60)+' Sek.'};
+async function wake(on){try{if(on){if(!wl)wl=await navigator.wakeLock.request('screen')}else if(wl){await wl.release();wl=null}}catch(e){}}
+function pgStart(t,ind){
+  PG.cancel=false;PG.t0=Date.now();PG.last=0;
+  $('#pgt').textContent=t;$('#pgx').textContent='';$('#pgp').textContent=ind?'':'0 %';$('#pgi').style.width='0';
+  $('#pgbar').classList.toggle('ind',!!ind);$('#pge').textContent='Laufzeit: 0 Sek.';$('#pg').style.display='flex';wake(true);
+  clearInterval(PG.tick);
+  PG.tick=setInterval(()=>{const el=Date.now()-PG.t0;$('#pge').textContent='Laufzeit: '+fmtDur(el)+(Date.now()-PG.last>8000&&PG.last?' · arbeitet noch …':'')},1000);
+}
+function pgSet(f,t){
+  f=Math.max(0,Math.min(1,f));PG.last=Date.now();const el=PG.last-PG.t0;
+  $('#pgbar').classList.remove('ind');$('#pgi').style.width=Math.round(f*100)+'%';$('#pgp').textContent=Math.round(f*100)+' %';
+  $('#pgx').textContent=(t||'')+(f>0.03&&f<1&&el>2000?' · noch ca. '+fmtDur(el*(1-f)/f):'');
+}
+function pgEnd(){clearInterval(PG.tick);$('#pg').style.display='none';wake(false)}
+$('#pgc').onclick=()=>{PG.cancel=true;$('#pgx').textContent='Wird abgebrochen …'};
 const dat=n=>n+(n===1?' Datei':' Dateien'),eintr=n=>n+(n===1?' Eintrag':' Einträge');
 let mainId=null;
 const setStatus=m=>{$('#qs').textContent=m};
@@ -270,7 +299,9 @@ function blobOf(id){
   if(mem.has(id))return Promise.resolve(mem.get(id));
   return new Promise(res=>{if(!db)return res(null);try{const q=db.transaction('b').objectStore('b').get(id);q.onsuccess=()=>res(q.result?q.result.blob:null);q.onerror=()=>res(null)}catch(e){res(null)}});
 }
-function putText(id,txt){indexed.add(id);if(db)try{db.transaction('t','readwrite').objectStore('t').put({id,txt,nt:norm(txt),nv:2})}catch(e){}}
+const tq=[];
+function flushT(){if(!tq.length)return;const arr=tq.splice(0);if(db)try{const st=db.transaction('t','readwrite').objectStore('t');arr.forEach(r=>st.put(r))}catch(e){}}
+function putText(id,txt){indexed.add(id);tq.push({id,txt,nt:norm(txt),nv:2});if(tq.length>=40)flushT()}
 function unindex(id){indexed.delete(id);if(db)try{db.transaction('t','readwrite').objectStore('t').delete(id)}catch(e){}}
 function loadAll(){return new Promise(res=>{if(!db)return res([]);try{const q=db.transaction('n').objectStore('n').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])}catch(e){res([])}})}
 function loadKeys(){return new Promise(res=>{if(!db)return res();try{const q=db.transaction('t').objectStore('t').getAllKeys();q.onsuccess=()=>{(q.result||[]).forEach(k=>indexed.add(k));res()};q.onerror=()=>res()}catch(e){res()}})}
@@ -473,12 +504,49 @@ async function pickWithHandle(){
 const IOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const chooseFolder=async()=>{
   if(NATIVE)return nativeFolder();
-  if(IOS){toast('iPad/iPhone: Ordner bitte als ZIP wählen (Dateien-App: Ordner gedrückt halten > Komprimieren)');$('#upz').click();return}
+  if(IOS)return;
   if(window.showDirectoryPicker){try{return await pickWithHandle()}catch(e){setStatus('');if(e&&e.name==='AbortError')return}}
   $('#upd').click();
 };
 const getBl=it=>it.get?it.get():it.f;
+async function zipItemsFast(file){
+  await ensureLib('pako');
+  const size=file.size,whole=size<=120e6?new Uint8Array(await file.arrayBuffer()):null;
+  const rd=async(off,len)=>whole?whole.subarray(off,off+len):new Uint8Array(await file.slice(off,off+len).arrayBuffer());
+  const tail=await rd(Math.max(0,size-65557),Math.min(size,65557));
+  let e=-1;for(let i=tail.length-22;i>=0;i--){if(tail[i]===0x50&&tail[i+1]===0x4B&&tail[i+2]===5&&tail[i+3]===6){e=i;break}}
+  if(e<0)throw new Error('ZIP-Ende nicht gefunden');
+  const tv=new DataView(tail.buffer,tail.byteOffset+e),total=tv.getUint16(10,true),cdSize=tv.getUint32(12,true),cdOff=tv.getUint32(16,true);
+  if(total===0xFFFF||cdOff===0xFFFFFFFF)throw new Error('ZIP64 nicht unterstützt');
+  const cd=await rd(cdOff,cdSize),cv=new DataView(cd.buffer,cd.byteOffset,cd.byteLength),out=[];
+  let o=0;
+  for(let i=0;i<total&&o+46<=cd.length;i++){
+    if(cv.getUint32(o,true)!==0x02014b50)break;
+    const flags=cv.getUint16(o+8,true),method=cv.getUint16(o+10,true),csize=cv.getUint32(o+20,true),nl=cv.getUint16(o+28,true),el=cv.getUint16(o+30,true),cl=cv.getUint16(o+32,true),loff=cv.getUint32(o+42,true);
+    const nb=cd.subarray(o+46,o+46+nl),name=(flags&0x800)?new TextDecoder('utf-8').decode(nb):smartDecode(nb);
+    o+=46+nl+el+cl;
+    if(flags&1)continue;
+    const parts=name.split(/[\\/]/).filter(Boolean);
+    if(parts.some(q=>q==='__MACOSX'||q.startsWith('.')))continue;
+    if(/[\\/]$/.test(name)){if(parts.length)out.push({folder:true,dirs:parts});continue}
+    const fname=parts.pop();
+    if(!fname||!OKX.includes(fname.split('.').pop().toLowerCase()))continue;
+    out.push({f:{name:fname,type:''},dirs:parts,get:async()=>{
+      let b=await rd(loff,30+nl+el+csize+1024);
+      const dv=new DataView(b.buffer,b.byteOffset,b.byteLength),ds=30+dv.getUint16(26,true)+dv.getUint16(28,true);
+      if(ds+csize>b.length)b=await rd(loff,ds+csize);
+      const raw=b.subarray(ds,ds+csize);
+      if(method===0)return new Blob([raw]);
+      if(method===8)return new Blob([pako.inflateRaw(raw)]);
+      throw new Error('Unbekannte ZIP-Kompression ('+method+')');
+    }});
+  }
+  return out;
+}
 async function zipItems(file){
+  try{return await zipItemsFast(file)}catch(e){return zipItemsJ(file)}
+}
+async function zipItemsJ(file){
   await ensureLib('JSZip');const z=await JSZip.loadAsync(file),out=[];
   z.forEach((path,en)=>{
     if(en.dir){const dp=path.split(/[\\/]/).filter(Boolean);if(dp.length&&!dp.some(q=>q==='__MACOSX'||q.startsWith('.')))out.push({folder:true,dirs:dp});return}
@@ -493,14 +561,17 @@ async function expand(files){
   const items=[];
   for(const f of files){
     if(/\.zip$/i.test(f.name)){
-      try{setStatus('ZIP wird gelesen: '+f.name+' …');items.push(...await zipItems(f))}
+      try{pgStart('ZIP wird gelesen …',true);$('#pgx').textContent=f.name;await sleep(30);items.push(...await zipItems(f))}
       catch(e){toast('ZIP konnte nicht gelesen werden: '+f.name)}
-      setStatus('');
+      pgEnd();setStatus('');
     }else items.push({f,dirs:[]});
   }
   return items;
 }
 async function ingest(items,base){
+  try{return await ingestRaw(items,base)}catch(e){pgEnd();setStatus('');toast('Import fehlgeschlagen: '+((e&&e.message)||e))}
+}
+async function ingestRaw(items,base){
   const folders=items.filter(it=>it.folder),ok=items.filter(it=>!it.folder&&OKX.includes((it.f.name.split('.').pop()||'').toLowerCase()));
   const skipped=items.length-ok.length-folders.length;
   let fc=0;
@@ -513,19 +584,22 @@ async function ingest(items,base){
   if(conf.length===1)over=await ask(`Die Datei „${conf[0].f.name}“ gibt es in diesem Ordner schon.\n\nÜberschreiben?`,{ok:'Überschreiben'});
   else if(conf.length>1)over=await ask(`${conf.length} Dateien gibt es schon (z. B. „${conf[0].f.name}“).\n\nAlle überschreiben oder diese Dateien überspringen?`,{ok:'Alle überschreiben',cancel:'Überspringen'});
   let added=0,replaced=0,k=0,batch=[],bsz=0;
+  pgStart('Dateien werden gespeichert …');
   for(const it of ok){
-    if(++k%5===1)setStatus('Hochladen … '+k+' von '+ok.length);
+    if(PG.cancel)break;
+    if(++k===1||Date.now()-PG.last>250){pgSet((k-1)/ok.length,'Datei '+k+' von '+ok.length);await sleep(0)}
     const p=resolve(it.dirs,true),ex=exist(p,it.f.name),ext=it.f.name.split('.').pop().toLowerCase();
     if(ex){if(!over)continue;ex.blob=await getBl(it);ex.mime=it.f.type;delete ex.html;unindex(ex.id);await put(ex);replaced++;if(openFileId===ex.id)openFile(ex)}
     else{const n={id:uid(),parent:p,type:'file',name:it.f.name,ext:ext.toLowerCase(),blob:await getBl(it),mime:it.f.type};nodes.push(n);if(!kmD)kmAdd(n);batch.push(n);bsz+=(n.blob&&n.blob.size)||0;added++;if(batch.length>=100||bsz>=30e6){await putMany(batch);batch=[];bsz=0}}
   }
   if(batch.length)await putMany(batch);
-  open.add(base);setStatus('');render();usage();indexMissing();
-  const m=[];if(fc)m.push(fc+' Ordner');if(added)m.push(added+' neu');if(replaced)m.push(replaced+' überschrieben');if(skipped)m.push(skipped+' nicht unterstützt');
+  const dur=Date.now()-PG.t0;pgEnd();
+  open.add(base);setStatus('');render();usage();
+  const m=[];if(fc)m.push(fc+' Ordner');if(added)m.push(added+' neu');if(replaced)m.push(replaced+' überschrieben');if(skipped)m.push(skipped+' nicht unterstützt');if(PG.cancel)m.push('abgebrochen');m.push('in '+fmtDur(dur));
   toast(m.length?m.join(', '):'Nichts hochgeladen');
 }
-$('#up').onchange=async e=>{const fl=[...e.target.files];e.target.value='';const l=await expand(fl);await ingest(l,targetFolder())};
-$('#upz').onchange=async e=>{const fl=[...e.target.files];e.target.value='';qAdd(await expand(fl))};
+$('#up').onchange=async e=>{const fl=[...e.target.files];e.target.value='';$('#qp').style.display='none';const l=await expand(fl);await ingest(l,targetFolder())};
+$('#upz').onchange=async e=>{const fl=[...e.target.files];e.target.value='';$('#qp').style.display='none';const l=await expand(fl);await ingest(l,qBase)};
 /* Mehrere Ordner sammeln, dann gemeinsam hochladen */
 let queue=[],qBase='root';
 function qRender(){
@@ -544,7 +618,32 @@ function qAdd(list){
 }
 $('#bO').onclick=()=>{queue=[];qBase=targetFolder();$('#qp').style.display='flex';qRender();chooseFolder()};
 $('#qz').onclick=()=>$('#upz').click();
-if(IOS){$('#qa').style.display='none';$('#bO').textContent='⬆ Ordner (ZIP)';$('#qh').textContent='iPad und iPhone erlauben Web-Apps keine Ordnerauswahl. Darum per ZIP: Ordner in der Dateien-App gedrückt halten, „Komprimieren“ wählen, dann hier „ZIP-Datei wählen“. Ordner, Unterordner und leere Ordner bleiben erhalten.'}
+if(IOS){
+  ['#qa','#qc','#ql','#qg','#qt'].forEach(q=>$(q).style.display='none');
+  $('#bO').textContent='⬆ Ordner / Import';$('#qtt').textContent='Songtexte importieren';
+  $('#qh').textContent='Auf dem iPad gibt es keine Ordnerauswahl. Wähle: 1) eine ZIP-Datei (Ordner in der Dateien-App gedrückt halten, „Komprimieren“), 2) alle Dateien eines Ordners auf einmal markieren, 3) eine ZIP-Datei per Internet-Link laden. Du kannst auch Dateien oder Ordner aus der Dateien-App direkt in die App ziehen (Split View).';
+}
+$('#qf').onclick=()=>$('#up').click();
+$('#qu').onclick=async()=>{
+  const def=/^https?:$/.test(location.protocol)&&!NATIVE?new URL('songs.zip',location.href).href:'https://';
+  const u=await ask('Link zur ZIP-Datei:',{input:true,def,ok:'Laden'});
+  if(!u)return;$('#qp').style.display='none';await importUrl(u.trim(),qBase);
+};
+async function importUrl(url,base){
+  pgStart('Download läuft …',true);
+  try{
+    const r=await fetch(url);if(!r.ok)throw new Error('Server antwortet mit '+r.status);
+    const total=+r.headers.get('content-length')||0,chunks=[];let got=0;
+    if(r.body&&r.body.getReader){
+      const rd=r.body.getReader();
+      for(;;){const {done,value}=await rd.read();if(done)break;chunks.push(value);got+=value.length;{const sp=got/Math.max(1,(Date.now()-PG.t0))*1000/1048576,txt=(got/1048576).toFixed(1)+' MB'+(total?' von '+(total/1048576).toFixed(1)+' MB':'')+' · '+sp.toFixed(1)+' MB/s';if(total)pgSet(got/total,txt);else{PG.last=Date.now();$('#pgx').textContent=txt}}if(PG.cancel)throw new Error('abgebrochen')}
+    }else{const b=await r.blob();chunks.push(b);got=b.size}
+    const name=decodeURIComponent((url.split('?')[0].split('/').pop())||'download.zip');
+    const f=new File(chunks,name,{type:'application/zip'});
+    pgEnd();
+    const l=await expand([f]);await ingest(l,base);
+  }catch(e){pgEnd();toast('Download fehlgeschlagen: '+((e&&e.message)||e)+' (Link und Internetverbindung prüfen)')}
+}
 $('#qa').onclick=chooseFolder;
 $('#qc').onclick=()=>{queue=[];qRender()};
 $('#qx').onclick=()=>{queue=[];$('#qp').style.display='none'};
@@ -560,19 +659,24 @@ async function walkEntry(en,dirs,out){
   if(en.isFile){await new Promise(res=>en.file(f=>{out.push({f,dirs});res()},res))}
   else if(en.isDirectory){out.push({folder:true,dirs:[...dirs,en.name]});for(const c of await readDir(en.createReader()))await walkEntry(c,[...dirs,en.name],out)}
 }
-const tr=$('#tree');
-tr.addEventListener('dragover',e=>{if(dragIds)return;e.preventDefault();tr.classList.add('dz')});
-tr.addEventListener('dragleave',()=>tr.classList.remove('dz'));
-tr.addEventListener('drop',async e=>{
+document.addEventListener('dragover',e=>{if(dragIds)return;e.preventDefault();$('#tree').classList.add('dz')});
+document.addEventListener('dragleave',e=>{if(!e.relatedTarget)$('#tree').classList.remove('dz')});
+document.addEventListener('drop',async e=>{
   if(dragIds)return;
-  e.preventDefault();tr.classList.remove('dz');
+  e.preventDefault();$('#tree').classList.remove('dz');
+  if($('#ed')&&$('#ed').contains(e.target))return;
   const ents=[...(e.dataTransfer.items||[])].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
   const out=[];
   if(ents.length){for(const en of ents)await walkEntry(en,[],out)}
-  else out.push(...await expand([...e.dataTransfer.files]));
-  if(!out.length)return;
-  if(!queue.length)qBase=targetFolder();
-  qAdd(out);
+  else[...e.dataTransfer.files].forEach(f=>out.push({f,dirs:[]}));
+  const flat=[];
+  for(const it of out){if(!it.folder&&/\.zip$/i.test(it.f.name))flat.push(...await expand([it.f]));else flat.push(it)}
+  if(flat.length)await ingest(flat,targetFolder());
+});
+document.addEventListener('paste',async e=>{
+  const fl=[...((e.clipboardData&&e.clipboardData.files)||[])];
+  if(!fl.length||($('#ed')&&$('#ed').contains(e.target)))return;
+  e.preventDefault();await ingest(await expand(fl),targetFolder());
 });
 
 /* ---------- Anzeige ---------- */
@@ -774,7 +878,7 @@ async function toPlain(ext,blob){
   return smartDecode(buf);
 }
 
-const LIBURL={JSZip:'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',docx:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js',mammoth:'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',pdfjsLib:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'};
+const LIBURL={pako:'https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js',JSZip:'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',jspdf:'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',docx:'https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js',mammoth:'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js',pdfjsLib:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'};
 const LIBP={},LIBDEP={docx:['JSZip']};
 function ensureLib(k){
   if(window[k])return Promise.resolve();
@@ -1129,7 +1233,7 @@ async function extractText(n){
   try{
     const blob=await blobOf(n.id);if(!blob)return;
     if(['txt','doc','rtf','html','htm'].includes(n.ext))t=await toPlain(n.ext,blob);
-    else if(n.ext==='docx'){await ensureLib('mammoth');t=(await mammoth.extractRawText({arrayBuffer:await blob.arrayBuffer()})).value}
+    else if(n.ext==='docx')t=await docxText(blob);
     else if(n.ext==='pdf'){
       await pdfWorker();
       const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await blob.arrayBuffer())}).promise;
@@ -1142,12 +1246,13 @@ function indexMissing(){
   if(idxP)return idxP;
   idxP=(async()=>{
     const todo=nodes.filter(n=>n.type==='file'&&!indexed.has(n.id));if(mainId)todo.sort((a,b)=>(isDesc(b.id,mainId)?1:0)-(isDesc(a.id,mainId)?1:0));let i=0;
-    for(const n of todo){if(!byId(n.id))continue;setStatus('Indexiere Dateiinhalte … '+(++i)+' von '+todo.length);await extractText(n)}
-    setStatus('');
+    const ti=Date.now();
+    for(const n of todo){if(!byId(n.id))continue;if(++i%10===1){const f=i/todo.length,el=Date.now()-ti;setStatus('Indexiere Dateiinhalte … '+i+' von '+todo.length+' ('+Math.round(f*100)+' %'+(i>20&&el>3000?', noch ca. '+fmtDur(el*(1-f)/f):'')+')')}await extractText(n);if(i%5===0)await sleep(15)}
+    flushT();setStatus('');
   })().finally(()=>{idxP=null});
   return idxP;
 }
-function scanText(q,tok,ok){return new Promise(res=>{
+function scanText(q,tok,ok){flushT();return new Promise(res=>{
   const hits=new Map();if(!db)return res(hits);
   try{const rq=db.transaction('t').objectStore('t').openCursor();
     rq.onsuccess=()=>{const c=rq.result;if(!c||tok!==qTok)return res(hits);if(ok&&!ok(c.value.id)){c.continue();return}
@@ -1331,7 +1436,7 @@ function setScope(k){
   }
   scKeep=true;snap=$('#q').value.trim()?scopeFolders():null;rerunSearch();
 }
-$('#q').addEventListener('focus',()=>{document.body.classList.add('sq');updScope()});
+$('#q').addEventListener('focus',()=>{document.body.classList.add('sq');updScope();setTimeout(()=>indexMissing(),400)});
 $('#q').addEventListener('blur',()=>setTimeout(()=>{if(!$('#q').value&&!scKeep)document.body.classList.remove('sq')},300));
 $('#scD').onclick=()=>setScope('dw');$('#scM').onclick=()=>setScope('main');$('#scC').onclick=()=>setScope('cur');
 function pickFolders(init){
