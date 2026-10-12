@@ -118,6 +118,8 @@ body.sel #sb{display:flex}
 .rbg{margin-left:auto;display:flex;gap:6px;flex:none}
 .rb{padding:5px 10px;font-size:14px;line-height:1.2;border-radius:8px}
 .rbm{background:#fff3a8;border-color:#e3cb55;color:#333;font-weight:600}
+#tree>.row:not(.rootrow){width:max-content;min-width:100%}
+#tree>.row.srow{width:auto;min-width:0}
 .txtv{white-space:pre-wrap;overflow-wrap:anywhere;font:18px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 .note{color:var(--mut);font-size:12px;margin-bottom:8px}
 .paper.html{background:#fff;color:#000;font:17px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -164,7 +166,6 @@ body.sq #sc{display:flex}
     <button id="bL">🖼 Logo</button>
     <button id="bH">★ Hauptordner</button>
     <button id="bW">↩ Wiederherstellen</button>
-    <button id="bFix">🔧 Namen reparieren</button>
   </div>
   <div class="bar">
     <button id="bCp">⧉ Kopieren</button>
@@ -248,7 +249,7 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 25';
+const APPV='Version 26';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms)),PG={cancel:false,t0:0,last:0,tick:null};let wl=null;
 const fmtDur=ms=>{const t=Math.max(0,Math.round(ms/1000));if(t<60)return t+' Sek.';return Math.floor(t/60)+' Min. '+(t%60)+' Sek.'};
 async function wake(on){try{if(on){if(!wl)wl=await navigator.wakeLock.request('screen')}else if(wl){await wl.release();wl=null}}catch(e){}}
@@ -512,7 +513,6 @@ async function repairNames(){
   pushUndo('Namen korrigiert ('+list.length+')',async()=>{const arr=[];for(const r of rec){const n=byId(r.id);if(n){n.name=r.old;arr.push(n)}}await putMeta(arr)});
   render();toast(eintr(list.length)+' korrigiert');
 }
-$('#bFix').onclick=repairNames;
 /* ---------- Verschieben ---------- */
 const isDesc=(id,anc)=>{let x=byId(id);while(x){if(x.id===anc)return true;x=byId(x.parent)}return false};
 function dropTarget(el,dest){
@@ -722,6 +722,7 @@ async function ingestRaw(items,base){
   open.add(base);setStatus('');render();usage();
   const m=[];if(fc)m.push(fc+' Ordner');if(added)m.push(added+' neu');if(replaced)m.push(replaced+' überschrieben');if(skipped)m.push(skipped+' nicht unterstützt');if(PG.cancel)m.push('abgebrochen');m.push('in '+fmtDur(dur));
   toast(m.length?m.join(', '):'Nichts hochgeladen');
+  setTimeout(()=>{if(created.some(id=>{const n=byId(id);return n&&fixName(n.name)}))toastAct('Einige Namen haben falsche Sonderzeichen.','🔧 Korrigieren',repairNames)},3000);
 }
 $('#up').onchange=async e=>{const fl=[...e.target.files];e.target.value='';$('#qp').style.display='none';const l=await expand(fl);await ingest(l,targetFolder())};
 $('#upz').onchange=async e=>{const fl=[...e.target.files];e.target.value='';$('#qp').style.display='none';const l=await expand(fl);await ingest(l,qBase)};
@@ -1405,7 +1406,7 @@ function searchList(t,q){
   const res=nodes.map(n=>{if(!inScope(n))return null;const h=contentHits.get(n.id);return(norm(n.name).includes(q)||h)?{n,h}:null}).filter(Boolean).sort((a,b)=>a.n.name.localeCompare(b.n.name,'de'));
   if(!res.length){const d=document.createElement('div');d.className='empty';d.style.marginTop='30px';d.textContent='Keine Treffer.';t.appendChild(d);return}
   res.slice(0,500).forEach(({n,h})=>{
-    const r=document.createElement('div');r.className='row'+(marked.has(n.id)?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'');r.dataset.id=n.id;r.style.paddingLeft='12px';
+    const r=document.createElement('div');r.className='row'+(marked.has(n.id)?' sel':'')+(n.id===selId||n.id===openFileId?' cur':'');r.dataset.id=n.id;r.style.paddingLeft='12px';r.classList.add('srow');
     const cb=document.createElement('input');cb.type='checkbox';cb.className='cb';cb.checked=marked.has(n.id);cb.onclick=e=>{e.stopPropagation();setMark(n.id,!marked.has(n.id));render()};
     const ic=document.createElement('span');ic.innerHTML=n.type==='folder'?FOLDER_SVG:extIcon(n.ext);
     const box=document.createElement('div');box.style.cssText='min-width:0;flex:1;overflow:hidden';
