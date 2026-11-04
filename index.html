@@ -255,7 +255,7 @@ const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clea
 /* ---------- Speicher (IndexedDB, nur auf diesem Gerät) ---------- */
 const mem=new Map(),indexed=new Set(),sig=new Map();
 let kmD=true,KM=new Map(),IM=new Map(),contentHits=new Map(),usageTxt='';
-const APPV='Version 31';
+const APPV='Version 32';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms)),PG={cancel:false,t0:0,last:0,tick:null};let wl=null;
 const fmtDur=ms=>{const t=Math.max(0,Math.round(ms/1000));if(t<60)return t+' Sek.';return Math.floor(t/60)+' Min. '+(t%60)+' Sek.'};
 async function wake(on){try{if(on){if(!wl)wl=await navigator.wakeLock.request('screen')}else if(wl){await wl.release();wl=null}}catch(e){}}
