@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Defter</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -16,7 +16,7 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181a;--pane:#222427;--tx:#eceae5;--mut:#9a9a94;--bd:#37393d;--ac:#6b9bff;--sel:#2b3b5c;--hov:#2c2e32}}
 :root[data-theme="dark"]{--bg:#17181a;--pane:#222427;--tx:#eceae5;--mut:#9a9a94;--bd:#37393d;--ac:#6b9bff;--sel:#2b3b5c;--hov:#2c2e32}
 *{box-sizing:border-box}
-html,body{height:100%;margin:0}
+html,body{height:100%;margin:0;touch-action:manipulation}
 body{background:var(--bg);color:var(--tx);font:15px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;display:flex}
 #left{flex:none;width:380px;min-width:0;display:flex;flex-direction:column;border-right:1px solid var(--bd);background:var(--pane)}
 #right{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
@@ -67,7 +67,7 @@ img.logo{object-fit:contain;max-width:100%;display:block}
 .row.off{opacity:.4;pointer-events:none}
 #q{margin:6px 8px;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit}
 #cm{position:fixed;display:none;background:var(--pane);border:1px solid var(--bd);border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.3);z-index:11;padding:4px;min-width:200px}
-.cmi{padding:9px 12px;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;gap:18px}
+.cmi{padding:9px 12px;border-radius:6px;cursor:pointer;display:flex;justify-space-between;gap:18px}
 .cmi:hover{background:var(--hov)}.cmi small{color:var(--mut)}
 .row.cutd{opacity:.45}
 #head.hc{display:grid;grid-template-columns:1fr auto 1fr}#head.hc #ttl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -278,7 +278,7 @@ let mainId=null;
 const setStatus=m=>{$('#qs').textContent=m};
 /* Suche: Groß/Klein und Sonderzeichen gleichsetzen (ç=c, ğ=g, ş=s, ı/İ=i, ö=o, ü=u, ä=a, ß=s ...) – Länge bleibt gleich */
 const NMAP={'ı':'i','ß':'s','ø':'o','đ':'d','ł':'l','æ':'a','œ':'o'};
-const flat=s=>s.replace(/[^\u0000-\u007f]/gu,c=>NMAP[c]||Array.from(c.normalize('NFD'))[0]).toLowerCase();
+const flat=s=>s.replace(/[^ -]/gu,c=>NMAP[c]||Array.from(c.normalize('NFD'))[0]).toLowerCase();
 /* zusätzlich deutsche Ersatzschreibweisen: ue=ü=u, oe=ö=o, ae=ä=a, ss=ß=s */
 const norm=s=>flat(s).replace(/ue|oe|ae|ss/g,m=>m[0]);
 function normMap(t){
@@ -293,13 +293,13 @@ function done(t,res){t.oncomplete=()=>res();t.onerror=()=>res();t.onabort=()=>{t
 function put(n){
   if(n.id==='__logo'||n.id==='__main'){return new Promise(res=>{if(!db)return res();try{const t=db.transaction('n','readwrite');t.objectStore('n').put(n);done(t,res)}catch(e){res()}})}
   const blob=n.blob;delete n.blob;delete n.txt;
-  if(!kmD){const s0=sig.get(n.id);if(s0===undefined)kmAdd(n);else if(s0!==n.parent+'\0'+n.name)kmD=true}
+  if(!kmD){const s0=sig.get(n.id);if(s0===undefined)kmAdd(n);else if(s0!==n.parent+' '+n.name)kmD=true}
   if(!db){if(blob)mem.set(n.id,blob);return Promise.resolve()}
   return new Promise(res=>{try{const t=db.transaction(blob?['n','b']:['n'],'readwrite');t.objectStore('n').put(n);if(blob)t.objectStore('b').put({id:n.id,blob});done(t,res)}catch(e){res()}});
 }
 function putMany(arr){
   const items=arr.map(n=>{const blob=n.blob;delete n.blob;delete n.txt;
-    if(!kmD){const s0=sig.get(n.id);if(s0===undefined)kmAdd(n);else if(s0!==n.parent+'\0'+n.name)kmD=true}
+    if(!kmD){const s0=sig.get(n.id);if(s0===undefined)kmAdd(n);else if(s0!==n.parent+' '+n.name)kmD=true}
     return{n,blob}});
   if(!db){items.forEach(({n,blob})=>{if(blob)mem.set(n.id,blob)});return Promise.resolve()}
   return new Promise(res=>{try{
@@ -326,9 +326,9 @@ const uid=()=>Date.now().toString(36)+(seq++)+Math.random().toString(36).slice(2
 const coll=new Intl.Collator('de',{numeric:true});
 const cmp=(a,b)=>a.id==='__trash'?1:b.id==='__trash'?-1:(a.type===b.type?0:a.type==='folder'?-1:1)||coll.compare(a.name,b.name);
 function km(){if(!kmD)return;KM=new Map();IM=new Map();sig.clear();
-  for(const n of nodes){IM.set(n.id,n);sig.set(n.id,n.parent+'\0'+n.name);let a=KM.get(n.parent);if(!a)KM.set(n.parent,a=[]);a.push(n)}
+  for(const n of nodes){IM.set(n.id,n);sig.set(n.id,n.parent+' '+n.name);let a=KM.get(n.parent);if(!a)KM.set(n.parent,a=[]);a.push(n)}
   for(const a of KM.values())a.sort(cmp);kmD=false}
-function kmAdd(n){IM.set(n.id,n);let a=KM.get(n.parent);if(!a)KM.set(n.parent,a=[]);let lo=0,hi=a.length;while(lo<hi){const m=(lo+hi)>>1;if(cmp(a[m],n)<=0)lo=m+1;else hi=m}a.splice(lo,0,n);sig.set(n.id,n.parent+'\0'+n.name)}
+function kmAdd(n){IM.set(n.id,n);let a=KM.get(n.parent);if(!a)KM.set(n.parent,a=[]);let lo=0,hi=a.length;while(lo<hi){const m=(lo+hi)>>1;if(cmp(a[m],n)<=0)lo=m+1;else hi=m}a.splice(lo,0,n);sig.set(n.id,n.parent+' '+n.name)}
 const kids=p=>{km();return KM.get(p)||[]};
 const byId=id=>{km();return IM.get(id)};
 async function usage(){try{const e=await navigator.storage.estimate();usageTxt=' · belegt: '+(e.usage>=1073741824?(e.usage/1073741824).toFixed(2)+' GB':Math.round(e.usage/1048576)+' MB');render()}catch(x){}}
@@ -346,17 +346,17 @@ function setMark(id,on){
 }
 const topOf=a=>{const S=new Set(a);return a.filter(i=>{let x=byId(i);x=x&&byId(x.parent);while(x){if(S.has(x.id))return false;x=byId(x.parent)}return true})};
 /* Zeichensatz DOS/OEM (Windows-ZIP ohne UTF-8-Kennzeichen, z. B. „Türkü“ als Byte 0x81) */
-const CP850='ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø×ƒáíóúñÑªº¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ðÐÊËÈıÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµþÞÚÛÙýÝ¯´\u00ad±‗¾¶§÷¸°¨·¹³²■\u00a0';
+const CP850='ÇüéâäàåçêëèïîìÄÅÉæÆôöòûùÿÖÜø£Ø×ƒáíóúñÑªº¿®¬½¼¡«»░▒▓│┤ÁÂÀ©╣║╗╝¢¥┐└┴┬├─┼ãÃ╚╔╩╦╠═╬¤ðÐÊËÈıÍÎÏ┘┌█▄¦Ì▀ÓßÔÒõÕµþÞÚÛÙýÝ¯´­±‗¾¶§÷¸°¨·¹³²■ ';
 const cp850=b=>{let t='';for(const c of b)t+=c<128?String.fromCharCode(c):CP850[c-128];return t};
 function zipName(nb){try{return new TextDecoder('utf-8',{fatal:true}).decode(nb)}catch(e){return cp850(nb)}}
 const INV1252=(()=>{const m=new Map(),d=new TextDecoder('windows-1252');for(let b=0x80;b<=0xFF;b++)m.set(d.decode(new Uint8Array([b])),b);return m})();
 function fixName(name){
   const L='A-Za-zÄÖÜäöüß';
-  if(!new RegExp('[\\u0080-\\u009F]|['+L+'][„”™šŽ]['+L+']|^[™šŽ]['+L+']').test(name))return null;
+  if(!new RegExp('[\u0080-\u009F]|['+L+'][„”™šŽ]['+L+']|^[™šŽ]['+L+']').test(name))return null;
   const bytes=[];
   for(const ch of name){const c=ch.codePointAt(0);if(c<128)bytes.push(c);else{const b=INV1252.get(ch);if(b===undefined)return null;bytes.push(b)}}
   const r=cp850(bytes);
-  if(r===name||/[\u0080-\u009F\u2500-\u259F]/.test(r))return null;
+  if(r===name||/[-─-▟]/.test(r))return null;
   return r;
 }
 function render(){updScope();{const on=!!(mainId&&byId(mainId)&&mainId===curFolder()),h=$('#hm');h.classList.toggle('on',on);h.textContent=on?'★':'☆';h.title=on?'Hauptordner aktiv – Tippen hebt ihn auf, gedrückt halten springt zu ihm':'Diesen Ordner als Hauptordner festlegen (gedrückt halten: zum Hauptordner springen)'}
@@ -516,8 +516,15 @@ async function finalDelete(roots,all){
   const ids=new Set(),col=i=>{ids.add(i);kids(i).forEach(x=>col(x.id))};roots.forEach(col);
   const list=[...ids].map(byId).filter(Boolean),fi=list.filter(x=>x.type==='file').length,fo=list.length-fi;
   const names=roots.map(byId).filter(Boolean).map(x=>(x.type==='folder'?'📁 ':'📄 ')+x.name);
-  const shown=names.slice(0,6).join('\n')+(names.length>6?'\n… und '+(names.length-6)+' weitere':'');
-  const ok=await ask('⚠ '+(all?'PAPIERKORB ENDGÜLTIG LEEREN':'ENDGÜLTIG LÖSCHEN')+'\n\nEs wird endgültig gelöscht:\n'+shown+'\n\nInsgesamt '+fo+' Ordner und '+dat(fi)+'. Das lässt sich NICHT rückgängig machen. Die Einträge sind danach auch nicht mehr im Papierkorb.',{ok:'Endgültig löschen',cancel:'Abbrechen',danger:true});
+  const shown=names.slice(0,6).join('
+')+(names.length>6?'
+… und '+(names.length-6)+' weitere':'');
+  const ok=await ask('⚠ '+(all?'PAPIERKORB ENDGÜLTIG LEEREN':'ENDGÜLTIG LÖSCHEN')+'
+
+Es wird endgültig gelöscht:
+'+shown+'
+
+Insgesamt '+fo+' Ordner und '+dat(fi)+'. Das lässt sich NICHT rückgängig machen. Die Einträge sind danach auch nicht mehr im Papierkorb.',{ok:'Endgültig löschen',cancel:'Abbrechen',danger:true});
   if(!ok)return;
   await removeNodes(roots);
   render();usage();toast('Endgültig gelöscht: '+fo+' Ordner, '+dat(fi));
@@ -534,8 +541,13 @@ $('#bD').onclick=async()=>{
 async function repairNames(){
   const list=nodes.map(n=>({n,nn:fixName(n.name)})).filter(x=>x.nn);
   if(!list.length)return toast('Alle Namen sind in Ordnung.');
-  const ex=list.slice(0,6).map(x=>x.n.name+'  →  '+x.nn).join('\n');
-  if(!await ask('Namen korrigieren\n\n'+eintr(list.length)+' haben falsch kodierte Sonderzeichen (ü, ö, ä …):\n'+ex+(list.length>6?'\n…':''),{ok:'Korrigieren',cancel:'Abbrechen'}))return;
+  const ex=list.slice(0,6).map(x=>x.n.name+'  →  '+x.nn).join('
+');
+  if(!await ask('Namen korrigieren
+
+'+eintr(list.length)+' haben falsch kodierte Sonderzeichen (ü, ö, ä …):
+'+ex+(list.length>6?'
+…':''),{ok:'Korrigieren',cancel:'Abbrechen'}))return;
   const rec=[];
   for(const {n,nn} of list){rec.push({id:n.id,old:n.name});n.name=uniqName(n.parent,nn,n.type,' (korrigiert)')}
   await putMeta(list.map(x=>x.n));
@@ -559,7 +571,11 @@ async function moveItems(ids,dest){
   const clash=i=>{const n=byId(i);return kids(dest).find(x=>x.name===n.name&&x.type===n.type&&x.id!==n.id)};
   const fc=ids.filter(i=>clash(i)&&byId(i).type==='folder'),dc=ids.filter(i=>clash(i)&&byId(i).type==='file');
   let rp=true;
-  if(dc.length)rp=await ask(dc.length===1?`Im Zielordner gibt es „${byId(dc[0]).name}“ schon.\n\nÜberschreiben?`:`${dc.length} Dateien gibt es im Zielordner schon.\n\nAlle überschreiben oder diese überspringen?`,{ok:'Überschreiben',cancel:'Überspringen'});
+  if(dc.length)rp=await ask(dc.length===1?`Im Zielordner gibt es „${byId(dc[0]).name}“ schon.
+
+Überschreiben?`:`${dc.length} Dateien gibt es im Zielordner schon.
+
+Alle überschreiben oder diese überspringen?`,{ok:'Überschreiben',cancel:'Überspringen'});
   let moved=0,skipped=fc.length;const movedRec=[],mv=[],disp=[];
   for(const id of ids){
     const n=byId(id);if(!n||fc.includes(id))continue;
@@ -679,9 +695,9 @@ async function zipItemsFast(file){
     const nb=cd.subarray(o+46,o+46+nl),name=(flags&0x800)?new TextDecoder('utf-8').decode(nb):zipName(nb);
     o+=46+nl+el+cl;
     if(flags&1)continue;
-    const parts=name.split(/[\\/]/).filter(Boolean);
+    const parts=name.split(/[\/]/).filter(Boolean);
     if(parts.some(q=>q==='__MACOSX'||q.startsWith('.')))continue;
-    if(/[\\/]$/.test(name)){if(parts.length)out.push({folder:true,dirs:parts});continue}
+    if(/[\/]$/.test(name)){if(parts.length)out.push({folder:true,dirs:parts});continue}
     const fname=parts.pop();
     if(!fname||!OKX.includes(fname.split('.').pop().toLowerCase()))continue;
     out.push({f:{name:fname,type:''},dirs:parts,get:async()=>{
@@ -702,8 +718,8 @@ async function zipItems(file){
 async function zipItemsJ(file){
   await ensureLib('JSZip');const z=await JSZip.loadAsync(file,{decodeFileName:b=>zipName(Uint8Array.from(b))}),out=[];
   z.forEach((path,en)=>{
-    if(en.dir){const dp=path.split(/[\\/]/).filter(Boolean);if(dp.length&&!dp.some(q=>q==='__MACOSX'||q.startsWith('.')))out.push({folder:true,dirs:dp});return}
-    const parts=path.split(/[\\/]/).filter(Boolean),name=parts.pop();
+    if(en.dir){const dp=path.split(/[\/]/).filter(Boolean);if(dp.length&&!dp.some(q=>q==='__MACOSX'||q.startsWith('.')))out.push({folder:true,dirs:dp});return}
+    const parts=path.split(/[\/]/).filter(Boolean),name=parts.pop();
     if(!name||name.startsWith('.')||parts.some(q=>q==='__MACOSX'||q.startsWith('.')))return;
     if(!OKX.includes(name.split('.').pop().toLowerCase()))return;
     out.push({f:{name,type:''},dirs:parts,get:()=>en.async('blob')});
@@ -734,8 +750,12 @@ async function ingestRaw(items,base){
   folders.forEach(it=>resolve(it.dirs,true));
   const conf=ok.filter(it=>{const p=resolve(it.dirs,false);return p&&exist(p,it.f.name)});
   let over=true;
-  if(conf.length===1)over=await ask(`Die Datei „${conf[0].f.name}“ gibt es in diesem Ordner schon.\n\nÜberschreiben?`,{ok:'Überschreiben'});
-  else if(conf.length>1)over=await ask(`${conf.length} Dateien gibt es schon (z. B. „${conf[0].f.name}“).\n\nAlle überschreiben oder diese Dateien überspringen?`,{ok:'Alle überschreiben',cancel:'Überspringen'});
+  if(conf.length===1)over=await ask(`Die Datei „${conf[0].f.name}“ gibt es in diesem Ordner schon.
+
+Überschreiben?`,{ok:'Überschreiben'});
+  else if(conf.length>1)over=await ask(`${conf.length} Dateien gibt es schon (z. B. „${conf[0].f.name}“).
+
+Alle überschreiben oder diese Dateien überspringen?`,{ok:'Alle überschreiben',cancel:'Überspringen'});
   let added=0,replaced=0,k=0,batch=[],bsz=0;
   pgStart('Dateien werden gespeichert …');
   for(const it of ok){
@@ -854,8 +874,8 @@ function sniffKind(h){
   if(h[0]===0xD0&&h[1]===0xCF&&h[2]===0x11&&h[3]===0xE0)return 'ole';
   if(h[0]===0x50&&h[1]===0x4B&&h[2]===3&&h[3]===4)return 'zip';
   let s='';for(let i=0;i<Math.min(h.length,2048);i++)s+=String.fromCharCode(h[i]);
-  const t=s.replace(/^[\s\u00ef\u00bb\u00bf]+/,'').toLowerCase();
-  if(t.startsWith('{\\rtf'))return 'rtf';
+  const t=s.replace(/^[\sï»¿]+/,'').toLowerCase();
+  if(t.startsWith('{\rtf'))return 'rtf';
   if(/^(<!doctype html|<html|<head|<body|<meta|<\?xml)/.test(t)||/<(html|body|head|br|p|div|font|span|table)[\s>\/]/.test(t))return 'html';
   return 'text';
 }
@@ -920,7 +940,7 @@ function docToText(u8){
   return cleanDoc(raw);
 }
 function cleanDoc(t){
-  t=t.replace(/\x07\x07/g,'\r');
+  t=t.replace(//g,'');
   const st=[];let out='';
   for(let i=0;i<t.length;i++){
     const c=t.charCodeAt(i);
@@ -928,44 +948,66 @@ function cleanDoc(t){
     if(c===0x14){if(st.length)st[st.length-1]=false;continue}
     if(c===0x15){st.pop();continue}
     if(st.length&&st.indexOf(true)>=0)continue;
-    if(c===0x0D||c===0x0B)out+='\n';
-    else if(c===0x0C)out+='\n\n';
-    else if(c===0x07||c===0x09)out+='\t';
+    if(c===0x0D||c===0x0B)out+='
+';
+    else if(c===0x0C)out+='
+
+';
+    else if(c===0x07||c===0x09)out+='	';
     else if(c===0x1E)out+='-';
     else if(c<0x20||c===0xFFFE||c===0xFFFF)continue;
     else out+=t[i];
   }
-  return out.replace(/[ \t]+\n/g,'\n').replace(/\n{4,}/g,'\n\n\n').trim();
+  return out.replace(/[ 	]+
+/g,'
+').replace(/
+{4,}/g,'
+
+
+').trim();
 }
 function looseText(u8){
   const a=new TextDecoder(turk(u8)?'windows-1254':'windows-1252').decode(u8);
-  const runs=a.match(/[\x20-\x7e\u00a0-\u024f\r\n\t]{30,}/g)||[];
-  return runs.map(s=>s.replace(/[\r\x0b]/g,'\n')).join('\n\n').trim();
+  const runs=a.match(/[ -~ -ɏ
+	]{30,}/g)||[];
+  return runs.map(s=>s.replace(/[]/g,'
+')).join('
+
+').trim();
 }
 /* RTF */
 function rtfToText(s){
   let out='',i=0,depth=0,ign=-1,uc=1,skip=0,bytes=[];const stack=[];
-  const cpm=/\\ansicpg(\d+)/.exec(s.slice(0,3000)),cp=cpm?+cpm[1]:1252;
+  const cpm=/\ansicpg(\d+)/.exec(s.slice(0,3000)),cp=cpm?+cpm[1]:1252;
   const dec=new TextDecoder({1250:'windows-1250',1251:'windows-1251',1253:'windows-1253',1254:'windows-1254',1255:'windows-1255',1256:'windows-1256',1257:'windows-1257',1258:'windows-1258'}[cp]||'windows-1252');
   const flush=()=>{if(bytes.length){out+=dec.decode(new Uint8Array(bytes));bytes=[]}};
   const IGN=new Set(['fonttbl','colortbl','stylesheet','info','pict','header','headerl','headerr','headerf','footer','footerl','footerr','footerf','footnote','themedata','colorschememapping','latentstyles','datastore','xmlnstbl','listtable','listoverridetable','generator','rsidtbl','private','object','fldinst','bkmkstart','bkmkend','shpinst','nonshppict','mmathPr','pnseclvl','pgdsctbl','revtbl','userprops','fchars','lchars']);
-  const SYM={par:'\n',line:'\n',tab:'\t',cell:'\t',row:'\n',page:'\n\n',sect:'\n\n',emdash:'—',endash:'–',bullet:'•',lquote:'‘',rquote:'’',ldblquote:'“',rdblquote:'”',emspace:' ',enspace:' ',qmspace:' '};
+  const SYM={par:'
+',line:'
+',tab:'	',cell:'	',row:'
+',page:'
+
+',sect:'
+
+',emdash:'—',endash:'–',bullet:'•',lquote:'‘',rquote:'’',ldblquote:'“',rdblquote:'”',emspace:' ',enspace:' ',qmspace:' '};
   const n=s.length;
   while(i<n){
     const c=s[i];
     if(c==='{'){stack.push(uc);depth++;i++}
     else if(c==='}'){flush();if(ign===depth)ign=-1;depth--;uc=stack.length?stack.pop():1;i++}
-    else if(c==='\\'){
+    else if(c==='\'){
       const d=s[i+1];
-      if(d==='\\'||d==='{'||d==='}'){if(ign<0){if(skip>0)skip--;else{flush();out+=d}}i+=2}
+      if(d==='\'||d==='{'||d==='}'){if(ign<0){if(skip>0)skip--;else{flush();out+=d}}i+=2}
       else if(d==="'"){const h=parseInt(s.substr(i+2,2),16);i+=4;if(ign<0){if(skip>0)skip--;else bytes.push(h)}}
       else if(d==='*'){if(ign<0)ign=depth;i+=2}
-      else if(d==='~'){if(ign<0){flush();out+='\u00a0'}i+=2}
+      else if(d==='~'){if(ign<0){flush();out+=' '}i+=2}
       else if(d==='_'){if(ign<0){flush();out+='-'}i+=2}
       else if(d==='-'){i+=2}
-      else if(d==='\n'||d==='\r'){if(ign<0){flush();out+='\n'}i+=2}
+      else if(d==='
+'||d===''){if(ign<0){flush();out+='
+'}i+=2}
       else{
-        const m=/^\\([a-zA-Z]+)(-?\d+)? ?/.exec(s.substr(i,48));
+        const m=/^\([a-zA-Z]+)(-?\d+)? ?/.exec(s.substr(i,48));
         if(!m){i+=2;continue}
         i+=m[0].length;const w=m[1],p=m[2];
         if(IGN.has(w)){if(ign<0)ign=depth}
@@ -976,11 +1018,18 @@ function rtfToText(s){
         }
       }
     }
-    else if(c==='\n'||c==='\r'){i++}
+    else if(c==='
+'||c===''){i++}
     else{if(ign<0){if(skip>0)skip--;else{flush();out+=c}}i++}
   }
   flush();
-  return out.replace(/[ \t]+\n/g,'\n').replace(/\n{4,}/g,'\n\n\n').trim();
+  return out.replace(/[ 	]+
+/g,'
+').replace(/
+{4,}/g,'
+
+
+').trim();
 }
 
 /* ---------- Anzeige: Text, HTML, DOCX; Klartext für die Suche ---------- */
@@ -1047,7 +1096,8 @@ function ensureLib(k){
 }
 async function docxText(blob){
   await ensureLib('JSZip');const z=await JSZip.loadAsync(blob),f=z.file('word/document.xml');if(!f)throw new Error('word/document.xml fehlt');
-  return (await f.async('string')).replace(/<w:tab\/>/g,'\t').replace(/<\/w:p>/g,'\n').replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&').trim();
+  return (await f.async('string')).replace(/<w:tab\/>/g,'	').replace(/<\/w:p>/g,'
+').replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&').trim();
 }
 async function openFile(n){
   openFileId=n.id;render();
@@ -1130,9 +1180,12 @@ function openEditor(name,html,node){
 async function startEdit(n){
   let html='';
   if(n.html)html=n.html;
-  else if(n.ext==='txt'){const b=await blobOf(n.id);if(!b)return toast('Datei nicht lesbar.');html=smartDecode(new Uint8Array(await b.arrayBuffer())).split(/\r?\n/).map(l=>'<div>'+(esc(l)||'<br>')+'</div>').join('')}
+  else if(n.ext==='txt'){const b=await blobOf(n.id);if(!b)return toast('Datei nicht lesbar.');html=smartDecode(new Uint8Array(await b.arrayBuffer())).split(/?
+/).map(l=>'<div>'+(esc(l)||'<br>')+'</div>').join('')}
   else if(n.ext==='docx'){
-    if(!await ask('Dieses Word-Dokument wurde nicht in der App erstellt. Beim Bearbeiten können Farben und komplexe Formatierungen verloren gehen.\n\nTrotzdem bearbeiten?',{ok:'Bearbeiten',cancel:'Abbrechen'}))return;
+    if(!await ask('Dieses Word-Dokument wurde nicht in der App erstellt. Beim Bearbeiten können Farben und komplexe Formatierungen verloren gehen.
+
+Trotzdem bearbeiten?',{ok:'Bearbeiten',cancel:'Abbrechen'}))return;
     const b=await blobOf(n.id);if(!b)return toast('Datei nicht lesbar.');
     await ensureLib('mammoth');html=(await mammoth.convertToHtml({arrayBuffer:await b.arrayBuffer()})).value;
   }else return toast('Diese Datei kann nicht bearbeitet werden.');
@@ -1189,7 +1242,7 @@ function buildDocx(root){
     const runs=p.map(r=>{
       if(r.br)return'<w:r><w:br/></w:r>';
       const hp=Math.round((r.sz||base)*2),pr=(r.b?'<w:b/>':'')+(r.i?'<w:i/>':'')+(r.c?`<w:color w:val="${r.c}"/>`:'')+`<w:sz w:val="${hp}"/><w:szCs w:val="${hp}"/>`+(r.u?'<w:u w:val="single"/>':'');
-      return`<w:r>${pr?'<w:rPr>'+pr+'</w:rPr>':''}<w:t xml:space="preserve">${esc(r.t.replace(/\u00a0/g,' '))}</w:t></w:r>`;
+      return`<w:r>${pr?'<w:rPr>'+pr+'</w:rPr>':''}<w:t xml:space="preserve">${esc(r.t.replace(/ /g,' '))}</w:t></w:r>`;
     }).join('');
     return`<w:p>${runs}</w:p>`;
   }).join('')||'<w:p/>';
@@ -1218,7 +1271,7 @@ function saveDialog(){
     $('#snf').onclick=async()=>{const n=await ask('Name des neuen Ordners in '+(f==='root'?'der obersten Ebene':fpath(f))+':',{input:true,ok:'Anlegen'});if(!n)return;const o={id:uid(),parent:f,type:'folder',name:n};nodes.push(o);put(o);open.add(f);f=o.id;render();draw()};
     $('#sno').onclick=()=>close(null);
     $('#sok').onclick=()=>{
-      let n=nm.value.trim().replace(EXT,'').replace(/[\\/:*?"<>|]/g,'_').trim();
+      let n=nm.value.trim().replace(EXT,'').replace(/[\/:*?"<>|]/g,'_').trim();
       if(!n){toast('Bitte einen Dateinamen eingeben.');nm.focus();return}
       const fm=$('#sfm').value;close({name:n+'.'+fm,folder:f,fmt:fm});
     };
@@ -1241,7 +1294,7 @@ function buildPdf(root){
       doc.setFont('helvetica',r.b&&r.i?'bolditalic':r.b?'bold':r.i?'italic':'normal');doc.setFontSize(r.sz||base);
       const c=r.c||'000000',R=parseInt(c.slice(0,2),16),G=parseInt(c.slice(2,4),16),B=parseInt(c.slice(4,6),16);
       doc.setTextColor(R,G,B);doc.setDrawColor(R,G,B);doc.setLineWidth(.6);
-      for(const tok of r.t.replace(/\u00a0/g,' ').split(/(\s+)/)){
+      for(const tok of r.t.replace(/ /g,' ').split(/(\s+)/)){
         if(!tok)continue;
         const w=doc.getTextWidth(tok);
         if(/^\s+$/.test(tok)){if(x>M&&x+w<M+maxW)x+=w;continue}
@@ -1270,7 +1323,9 @@ async function saveDocx(asNew){
   try{blob=await mkBlob(fmt,ed)}catch(e){return toast('Speichern als '+fmt.toUpperCase()+' ist fehlgeschlagen.')}
   let saved=kids(folder).find(x=>x.type==='file'&&x.name===name);
   if(saved){
-    if(!await ask(`Die Datei „${name}“ gibt es in diesem Ordner schon.\n\nÜberschreiben?`,{ok:'Überschreiben'}))return;
+    if(!await ask(`Die Datei „${name}“ gibt es in diesem Ordner schon.
+
+Überschreiben?`,{ok:'Überschreiben'}))return;
     saved.blob=blob;saved.mime=blob.type;saved.ext=fmt;saved.html=ed.innerHTML;saved.base=edBase;unindex(saved.id);await put(saved);
   }else{saved={id:uid(),parent:folder,type:'file',name,ext:fmt,blob,mime:blob.type,html:ed.innerHTML,base:edBase};nodes.push(saved);await put(saved);{const sid=saved.id,sn=name;pushUndo('Dokument „'+sn+'“ gespeichert',()=>trashItems([sid],true))}}
   edNode=saved;edDirty=false;$('#ttl').textContent='Bearbeiten: '+name;
@@ -1289,7 +1344,7 @@ $('#bR').onclick=async()=>{
   const v=await ask('Neuer Name für '+(n.type==='folder'?'den Ordner':'die Datei')+(ext?' (Endung '+ext+' bleibt)':'')+':',{input:true,def:base,ok:'Umbenennen'});
   if(!v)return;
   let b=v;if(ext&&b.toLowerCase().endsWith(ext.toLowerCase()))b=b.slice(0,-ext.length);
-  b=b.replace(/[\\/:*?"<>|]/g,'_').trim();if(!b)return;
+  b=b.replace(/[\/:*?"<>|]/g,'_').trim();if(!b)return;
   const nn=b+ext;
   if(nn===n.name)return;
   if(nodes.some(x=>x.parent===n.parent&&x.id!==n.id&&x.type===n.type&&x.name===nn))return toast('Dort gibt es schon „'+nn+'“.');
